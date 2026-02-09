@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Backend.Models
 {
@@ -11,10 +13,16 @@ namespace Backend.Models
         [Column("irasasid")]
         public int Irasasid { get; set; }
 
-        [ForeignKey("Testasid")]
+        [ForeignKey(nameof(Testasid))]
+        [JsonIgnore]
         public Testas? Testas { get; set; }
 
-        [ForeignKey("Irasasid")]
+        [ForeignKey(nameof(Irasasid))]
+        [JsonIgnore]
         public Irasas? Irasas { get; set; }
+
+        [Required]
+        [Column("atliktas")]
+        public bool Atliktas { get; set; }
     }
 }

@@ -18,9 +18,9 @@ namespace Backend.Controllers
         public async Task<ActionResult<IEnumerable<TestasIrasas>>> GetAll() => await _db.TestasIrasai.ToListAsync();
 
         [HttpGet("{testasid}/{irasasid}")]
-        public async Task<ActionResult<TestasIrasas>> Get(int testasid, int irasid)
+        public async Task<ActionResult<TestasIrasas>> Get(int testasid, int irasasid)
         {
-            var item = await _db.TestasIrasai.FindAsync(testasid, irasid);
+            var item = await _db.TestasIrasai.FindAsync(testasid, irasasid);
             if (item == null) return NotFound();
             return item;
         }
@@ -30,22 +30,26 @@ namespace Backend.Controllers
         {
             _db.TestasIrasai.Add(model);
             await _db.SaveChangesAsync();
-            return CreatedAtAction(nameof(Get), new { testasid = model.Testasid, irasid = model.Irasasid }, model);
+            return CreatedAtAction(
+                nameof(Get),
+                new { testasid = model.Testasid, irasasid = model.Irasasid },
+                model
+            );
         }
 
         [HttpPut("{testasid}/{irasasid}")]
-        public async Task<IActionResult> Update(int testasid, int irasid, TestasIrasas model)
+        public async Task<IActionResult> Update(int testasid, int irasasid, TestasIrasas model)
         {
-            if (testasid != model.Testasid || irasid != model.Irasasid) return BadRequest();
+            if (testasid != model.Testasid || irasasid != model.Irasasid) return BadRequest();
             _db.Entry(model).State = EntityState.Modified;
             await _db.SaveChangesAsync();
             return NoContent();
         }
 
         [HttpDelete("{testasid}/{irasasid}")]
-        public async Task<IActionResult> Delete(int testasid, int irasid)
+        public async Task<IActionResult> Delete(int testasid, int irasasid)
         {
-            var item = await _db.TestasIrasai.FindAsync(testasid, irasid);
+            var item = await _db.TestasIrasai.FindAsync(testasid, irasasid);
             if (item == null) return NotFound();
             _db.TestasIrasai.Remove(item);
             await _db.SaveChangesAsync();

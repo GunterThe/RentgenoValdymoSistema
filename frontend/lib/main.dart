@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'pages/irasai_page.dart';
+import 'pages/testai_page.dart';
+import 'widgets/app_scaffold.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,13 +12,82 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Brand/contrast leaning: a stronger seed and slightly increased contrast.
+    const seed = Colors.teal;
+    final scheme = ColorScheme.fromSeed(
+      seedColor: seed,
+      brightness: Brightness.dark,
+      contrastLevel: 0.35,
+    );
+
     return MaterialApp(
       title: 'Rentgeno Valdymas',
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey, brightness: Brightness.dark),
+        colorScheme: scheme,
+        scaffoldBackgroundColor: scheme.surface,
+        appBarTheme: AppBarTheme(
+          centerTitle: false,
+          backgroundColor: scheme.surface,
+          foregroundColor: scheme.onSurface,
+          elevation: 0,
+          scrolledUnderElevation: 1,
+          surfaceTintColor: scheme.surfaceTint,
+          titleTextStyle: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
+          ),
+        ),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          color: scheme.surfaceContainerHigh,
+          surfaceTintColor: scheme.surfaceTint,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: scheme.inverseSurface,
+          contentTextStyle: TextStyle(color: scheme.onInverseSurface),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
-      home: const MainPage(),
+      initialRoute: '/',
+      routes: {
+        '/': (_) => const MainPage(),
+        '/irasai': (_) => const IrasaiPage(),
+        '/testai': (_) => const TestaiPage(),
+      },
     );
   }
 }
@@ -23,121 +95,168 @@ class MyApp extends StatelessWidget {
 class MainPage extends StatelessWidget {
   const MainPage({super.key});
 
-  void _showPlaceholder(BuildContext context, String title) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$title - dar neįgyvendinta')),
-    );
-  }
-
-  Widget _buildActionCard(
-      BuildContext context, IconData icon, String label, VoidCallback onTap) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 3,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 36, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(height: 12),
-              Text(label, textAlign: TextAlign.center),
-            ],
-          ),
+  Widget _ActionTile({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: cs.primary,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: cs.onPrimary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.1,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 13,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+          ],
         ),
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pagrindinis'),
-        backgroundColor: cs.primaryContainer,
-        foregroundColor: cs.onPrimaryContainer,
-        actions: [
-          IconButton(
-            tooltip: 'Paskyra',
-            onPressed: () => _showPlaceholder(context, 'Paskyra'),
-            icon: const Icon(Icons.person_outline),
-          ),
-          IconButton(
-            tooltip: 'Atsijungti',
-            onPressed: () => _showPlaceholder(context, 'Atsijungti'),
-            icon: const Icon(Icons.logout),
-          ),
-          IconButton(
-            tooltip: 'Testai',
-            onPressed: () => _showPlaceholder(context, 'Testai'),
-            icon: const Icon(Icons.list_alt),
-          ),
-          IconButton(
-            tooltip: 'Supakavimas',
-            onPressed: () => _showPlaceholder(context, 'Supakavimas'),
-            icon: const Icon(Icons.inventory_2_outlined),
-          ),
-          IconButton(
-              tooltip: 'Isvezimas',
-              onPressed: () => _showPlaceholder(context, 'Isvezimas'),
-              icon: const Icon(Icons.local_shipping_outlined),
-            ),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Pagrindinis',
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
-              Card(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: cs.primary,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(Icons.medical_information_outlined,
+                        color: cs.onPrimary),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Rentgeno valdymas',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
                           ),
-                          onPressed: () => _showPlaceholder(context, 'Peržiūrėti įrašus '),
-                          icon: const Icon(Icons.add_road),
-                          label: const Text('Peržiūrėti įrašus'),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10))),
-                          onPressed: () => _showPlaceholder(context, 'Peržiūrėti testus'),
-                          icon: const Icon(Icons.science_outlined),
-                          label: const Text('Peržiūrėti testus'),
+                        SizedBox(height: 2),
+                        Text(
+                          'Greiti veiksmai ir paskutiniai įrašai',
+                          style: TextStyle(fontSize: 13, height: 1.25),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Card(
+              child: Column(
+                children: [
+                  _ActionTile(
+                    context: context,
+                    icon: Icons.article_outlined,
+                    title: 'Peržiūrėti įrašus',
+                    subtitle: 'Atidarykite rentgeno įrašų sąrašą',
+                    onTap: () => Navigator.of(context).pushNamed('/irasai'),
+                  ),
+                  const Divider(height: 1),
+                  _ActionTile(
+                    context: context,
+                    icon: Icons.science_outlined,
+                    title: 'Peržiūrėti testus',
+                    subtitle: 'Peržiūra ir testų vykdymas',
+                    onTap: () => Navigator.of(context).pushNamed('/testai'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.of(context).pushNamed('/testai'),
+                    icon: const Icon(Icons.list_alt),
+                    label: const Text('Testai'),
                   ),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => showPlaceholder(context, 'Supakavimas'),
+                    icon: const Icon(Icons.inventory_2_outlined),
+                    label: const Text('Supakavimas'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => showPlaceholder(context, 'Išvežimas'),
+              icon: const Icon(Icons.local_shipping_outlined),
+              label: const Text('Išvežimas'),
+            ),
+          ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showPlaceholder(context, 'Testai (greita)'),
-        child: const Icon(Icons.playlist_add),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.of(context).pushNamed('/testai'),
+        icon: const Icon(Icons.playlist_add),
+        label: const Text('Naujas testas'),
       ),
     );
   }

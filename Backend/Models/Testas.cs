@@ -16,10 +16,6 @@ namespace Backend.Models
         [Column("testotekstas")]
         public string Testotekstas { get; set; } = null!;
 
-        [Required]
-        [Column("atliktas")]
-        public bool Atliktas { get; set; }
-
         [JsonIgnore]
         public ICollection<TestasIrasas> Irasai { get; set; } = new List<TestasIrasas>();
     }
