@@ -19,17 +19,17 @@ class Irasas {
         pavadinimas: j['pavadinimas'] ?? j['Pavadinimas'] ?? '',
         pradzia: DateTime.parse(
           j['pradzia'] ?? j['Pradzia'] ?? DateTime.now().toIso8601String(),
-        ),
+        ).toLocal(),
         pabaiga: DateTime.parse(
           j['pabaiga'] ?? j['Pabaiga'] ?? DateTime.now().toIso8601String(),
-        ),
+        ).toLocal(),
       );
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'idDokumento': idDokumento,
         'pavadinimas': pavadinimas,
-        'pradzia': pradzia.toIso8601String(),
-        'pabaiga': pabaiga.toIso8601String(),
+      'pradzia': pradzia.toUtc().toIso8601String(),
+      'pabaiga': pabaiga.toUtc().toIso8601String(),
       };
 }

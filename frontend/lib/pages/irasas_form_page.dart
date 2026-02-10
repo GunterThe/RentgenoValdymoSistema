@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/irasas.dart';
+import '../models/prisegtas_failas.dart';
 import '../models/testas.dart';
 import '../models/testas_irasas.dart';
 import '../services/api.dart';
@@ -27,6 +30,10 @@ class _IrasasFormPageState extends State<IrasasFormPage> {
   List<TestasIrasas> _attached = [];
   Map<int, Testas> _testaiById = {};
 
+  bool _loadingFailai = false;
+  bool _uploadingFailai = false;
+  List<PrisegtasFailas> _failai = [];
+
   late DateTime _pradzia;
   late DateTime _pabaiga;
 
@@ -50,8 +57,91 @@ class _IrasasFormPageState extends State<IrasasFormPage> {
     if (!_isNew) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadAttachedTestai();
+        _loadAttachedFailai();
       });
     }
+  }
+
+  String _fmtSize(int? bytes) {
+    if (bytes == null) return '';
+    if (bytes < 1024) return '$bytes B';
+    final kb = bytes / 1024;
+    if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
+    final mb = kb / 1024;
+    return '${mb.toStringAsFixed(1)} MB';
+  }
+
+  bool _isImageFileName(String name) {
+    final dot = name.lastIndexOf('.');
+    final ext = (dot >= 0 ? name.substring(dot + 1) : name).toLowerCase();
+    return ext == 'png' ||
+        ext == 'jpg' ||
+        ext == 'jpeg' ||
+        ext == 'gif' ||
+        ext == 'webp' ||
+        ext == 'bmp';
+  }
+
+  Future<void> _downloadFailas(PrisegtasFailas f) async {
+    final uri = Api.prisegtasFailasDownloadUri(f.id);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nepavyko atidaryti atsisiuntimo nuorodos')),
+      );
+    }
+  }
+
+  Future<void> _openFailasPreview(PrisegtasFailas f) async {
+    final isImg = _isImageFileName(f.fileName);
+    if (!isImg) {
+      await _downloadFailas(f);
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        final uri = Api.prisegtasFailasFileUri(f.id);
+        return AlertDialog(
+          title: Text(f.fileName),
+          content: SizedBox(
+            width: 640,
+            child: AspectRatio(
+              aspectRatio: 4 / 3,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  uri.toString(),
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stack) {
+                    return Center(
+                      child: Text(
+                        'Nepavyko įkelti paveikslėlio',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Uždaryti'),
+            ),
+            FilledButton.icon(
+              onPressed: () => _downloadFailas(f),
+              icon: const Icon(Icons.download),
+              label: const Text('Atsisiųsti'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -130,8 +220,8 @@ class _IrasasFormPageState extends State<IrasasFormPage> {
         await Api.createIrasas({
           'idDokumento': _idDokumentoCtrl.text.trim(),
           'pavadinimas': _pavadinimasCtrl.text.trim(),
-          'pradzia': _pradzia.toIso8601String(),
-          'pabaiga': _pabaiga.toIso8601String(),
+          'pradzia': _pradzia.toUtc().toIso8601String(),
+          'pabaiga': _pabaiga.toUtc().toIso8601String(),
         });
       } else {
         final it = widget.item!;
@@ -139,8 +229,8 @@ class _IrasasFormPageState extends State<IrasasFormPage> {
           'id': it.id,
           'idDokumento': _idDokumentoCtrl.text.trim(),
           'pavadinimas': _pavadinimasCtrl.text.trim(),
-          'pradzia': _pradzia.toIso8601String(),
-          'pabaiga': _pabaiga.toIso8601String(),
+          'pradzia': _pradzia.toUtc().toIso8601String(),
+          'pabaiga': _pabaiga.toUtc().toIso8601String(),
         });
       }
 
@@ -187,6 +277,97 @@ class _IrasasFormPageState extends State<IrasasFormPage> {
       ).showSnackBar(SnackBar(content: Text('Klaida kraunant testus: $e')));
     } finally {
       if (mounted) setState(() => _loadingTestai = false);
+    }
+  }
+
+  Future<void> _loadAttachedFailai() async {
+    final it = widget.item;
+    if (it == null) return;
+    if (_loadingFailai) return;
+
+    setState(() => _loadingFailai = true);
+    try {
+      final raw = await Api.fetchPrisegtiFailaiByIrasas(it.id);
+      final list = raw
+          .map((e) => PrisegtasFailas.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      if (!mounted) return;
+      setState(() => _failai = list);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Klaida kraunant failus: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loadingFailai = false);
+    }
+  }
+
+  Future<void> _pickAndUploadFailai() async {
+    final irasas = widget.item;
+    if (irasas == null) return;
+    if (_saving || _uploadingFailai) return;
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      setState(() => _uploadingFailai = true);
+      for (final f in result.files) {
+        if (f.bytes == null && f.path == null) continue;
+        await Api.uploadPrisegtasFailas(
+          irasasid: irasas.id,
+          fileName: f.name,
+          filePath: f.path,
+          bytes: f.bytes,
+        );
+      }
+
+      await _loadAttachedFailai();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Klaida įkeliant failą: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingFailai = false);
+    }
+  }
+
+  Future<void> _deleteFailas(PrisegtasFailas f) async {
+    if (_saving) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pašalinti failą?'),
+        content: Text('Pašalinti "${f.fileName}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Atšaukti'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Pašalinti'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    try {
+      await Api.deletePrisegtasFailas(f.id);
+      await _loadAttachedFailai();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Klaida šalinant failą: $e')),
+      );
     }
   }
 
@@ -480,6 +661,131 @@ class _IrasasFormPageState extends State<IrasasFormPage> {
                                 subtitle: Text(
                                   link.atliktas ? 'Atliktas' : 'Neatliktas',
                                 ),
+                              );
+                            }).toList(),
+                          ),
+                      ],
+                      const SizedBox(height: 16),
+                      const Divider(height: 1),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Failai',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Atnaujinti failus',
+                            onPressed: (_isNew || _loadingFailai)
+                                ? null
+                                : _loadAttachedFailai,
+                            icon: const Icon(Icons.refresh),
+                          ),
+                        ],
+                      ),
+                      if (_isNew)
+                        Text(
+                          'Išsaugokite įrašą, kad galėtumėte pridėti failus.',
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                        )
+                      else ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: (_saving || _uploadingFailai)
+                                ? null
+                                : _pickAndUploadFailai,
+                            icon: _uploadingFailai
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child:
+                                        CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.attach_file),
+                            label: Text(
+                              _uploadingFailai ? 'Įkeliama...' : 'Pridėti failą',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (_loadingFailai)
+                          const Center(child: CircularProgressIndicator())
+                        else if (_failai.isEmpty)
+                          Text(
+                            'Failų nepridėta',
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          )
+                        else
+                          Column(
+                            children: _failai.map((f) {
+                              final size = _fmtSize(f.size);
+                              final subtitle = size.isEmpty ? null : Text(size);
+                              final isImg = _isImageFileName(f.fileName);
+                              return ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                leading: isImg
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          Api.prisegtasFailasFileUri(f.id)
+                                              .toString(),
+                                          width: 44,
+                                          height: 44,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stack) {
+                                            return const SizedBox(
+                                              width: 44,
+                                              height: 44,
+                                              child: Icon(Icons.image_not_supported_outlined),
+                                            );
+                                          },
+                                        ),
+                                      )
+                                    : const SizedBox(
+                                        width: 44,
+                                        height: 44,
+                                        child: Icon(Icons.insert_drive_file_outlined),
+                                      ),
+                                title: Text(f.fileName),
+                                subtitle: subtitle,
+                                trailing: PopupMenuButton<String>(
+                                  tooltip: 'Veiksmai',
+                                  onSelected: (v) {
+                                    switch (v) {
+                                      case 'download':
+                                        _downloadFailas(f);
+                                        break;
+                                      case 'delete':
+                                        _deleteFailas(f);
+                                        break;
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'download',
+                                      child: Text('Atsisiųsti'),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text('Pašalinti'),
+                                    ),
+                                  ],
+                                  icon: const Icon(Icons.more_vert),
+                                ),
+                                onTap: () => _openFailasPreview(f),
                               );
                             }).toList(),
                           ),
