@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
+
 void showPlaceholder(BuildContext context, String title) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text('$title - dar neįgyvendinta')),
@@ -31,7 +33,11 @@ class AppScaffold extends StatelessWidget {
       ),
       IconButton(
         tooltip: 'Atsijungti',
-        onPressed: () => showPlaceholder(context, 'Atsijungti'),
+        onPressed: () async {
+          await AuthService.instance.logout();
+          if (!context.mounted) return;
+          Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+        },
         icon: const Icon(Icons.logout),
       ),
       IconButton(

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'pages/irasai_page.dart';
 import 'pages/testai_page.dart';
+import 'pages/login_page.dart';
+import 'services/auth_service.dart';
 import 'widgets/app_scaffold.dart';
+import 'widgets/auth_guard.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AuthService.instance.init();
   runApp(const MyApp());
 }
 
@@ -84,9 +89,18 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (_) => const MainPage(),
-        '/irasai': (_) => const IrasaiPage(),
-        '/testai': (_) => const TestaiPage(),
+        '/login': (_) => AuthService.instance.isAuthenticated
+            ? const MainPage()
+            : const LoginPage(),
+        '/': (_) => const AuthGuard(protectedRoute: '/', child: MainPage()),
+        '/irasai': (_) => const AuthGuard(
+              protectedRoute: '/irasai',
+              child: IrasaiPage(),
+            ),
+        '/testai': (_) => const AuthGuard(
+              protectedRoute: '/testai',
+              child: TestaiPage(),
+            ),
       },
     );
   }

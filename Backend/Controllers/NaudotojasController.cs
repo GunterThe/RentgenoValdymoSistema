@@ -5,6 +5,7 @@ using Backend.Data;
 using Backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Backend.Controllers
 {
@@ -30,6 +31,9 @@ namespace Backend.Controllers
         public async Task<ActionResult<Naudotojas>> Create(Naudotojas naudotojas)
         {
             if (naudotojas.Id == Guid.Empty) naudotojas.Id = Guid.NewGuid();
+            naudotojas.PasswordHash = BCrypt.Net.BCrypt.HashPassword(naudotojas.PasswordHash);
+            naudotojas.PrisijungimoId = naudotojas.Vardas.ToLower() + "." + naudotojas.Pavarde.ToLower() + "." + Guid.NewGuid().ToString("N").Substring(0, 6);
+            naudotojas.Id = Guid.NewGuid();
             _db.Naudotojai.Add(naudotojas);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(Get), new { id = naudotojas.Id }, naudotojas);

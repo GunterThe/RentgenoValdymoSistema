@@ -14,6 +14,7 @@ namespace Backend.Data
         public DbSet<Testas> Testai { get; set; } = null!;
         public DbSet<TestasIrasas> TestasIrasai { get; set; } = null!;
         public DbSet<PrisegtasFailas> PrisegtiFailai { get; set; } = null!;
+        public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

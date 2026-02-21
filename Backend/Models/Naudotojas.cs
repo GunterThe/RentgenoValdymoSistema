@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Backend.Models
 {
@@ -9,7 +10,7 @@ namespace Backend.Models
     {
         [Key]
         [Column("id")]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
         [MaxLength(30)]
@@ -33,5 +34,12 @@ namespace Backend.Models
         [MaxLength(200)]
         [Column("password_hash")]
         public string PasswordHash { get; set; } = null!;
+
+        [Required]
+        [Column("prisijungimoid")]
+        public string PrisijungimoId { get; set; } = null!;
+        
+        [JsonIgnore]
+        public List<RefreshToken> RefreshToken { get; set; } = new List<RefreshToken>();
     }
 }

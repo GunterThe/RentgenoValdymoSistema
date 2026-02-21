@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Backend.Controllers
 {
@@ -82,6 +83,7 @@ namespace Backend.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<PrisegtasFailas>> Create(PrisegtasFailas model)
         {
             _db.PrisegtiFailai.Add(model);
@@ -91,6 +93,7 @@ namespace Backend.Controllers
 
         [HttpPost("upload/{irasasid}")]
         [Consumes("multipart/form-data")]
+        [Authorize]
         public async Task<ActionResult<PrisegtasFailas>> Upload(int irasasid, IFormFile file)
         {
             if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
@@ -123,6 +126,7 @@ namespace Backend.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<IActionResult> Update(Guid id, PrisegtasFailas model)
         {
             if (id != model.Id) return BadRequest();
@@ -132,6 +136,7 @@ namespace Backend.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> Delete(Guid id)
         {
             var item = await _db.PrisegtiFailai.FindAsync(id);

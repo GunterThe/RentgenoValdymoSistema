@@ -2,12 +2,14 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Backend.Data;
 using Backend.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class TestasController : ControllerBase
     {

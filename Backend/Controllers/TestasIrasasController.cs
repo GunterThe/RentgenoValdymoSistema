@@ -4,10 +4,12 @@ using Backend.Data;
 using Backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Backend.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class TestasIrasasController : ControllerBase
     {
