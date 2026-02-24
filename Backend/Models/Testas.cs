@@ -16,6 +16,9 @@ namespace Backend.Models
         [Column("testotekstas")]
         public string Testotekstas { get; set; } = null!;
 
+        [Column("tipas")]
+        public TestoTipas? Tipas { get; set; }
+
         [JsonIgnore]
         public ICollection<TestasIrasas> Irasai { get; set; } = new List<TestasIrasas>();
     }

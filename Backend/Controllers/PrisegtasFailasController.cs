@@ -45,11 +45,11 @@ namespace Backend.Controllers
             return item;
         }
 
-        [HttpGet("byIrasas/{irasasid}")]
-        public async Task<ActionResult<IEnumerable<PrisegtasFailas>>> GetByIrasas(int irasasid)
+        [HttpGet("byZingsnis/{zingsnisid}")]
+        public async Task<ActionResult<IEnumerable<PrisegtasFailas>>> GetByZingsnis(int zingsnisid)
         {
             var list = await _db.PrisegtiFailai
-                .Where(p => p.Irasasid == irasasid)
+                .Where(p => p.ZingsnisId == zingsnisid)
                 .OrderByDescending(p => p.SukurimoLaikas)
                 .ToListAsync();
             return list;
@@ -91,10 +91,10 @@ namespace Backend.Controllers
             return CreatedAtAction(nameof(Get), new { id = model.Id }, model);
         }
 
-        [HttpPost("upload/{irasasid}")]
+        [HttpPost("upload/{zingsnisid}")]
         [Consumes("multipart/form-data")]
         [Authorize]
-        public async Task<ActionResult<PrisegtasFailas>> Upload(int irasasid, IFormFile file)
+        public async Task<ActionResult<PrisegtasFailas>> Upload(int zingsnisid, IFormFile file)
         {
             if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
 
@@ -112,7 +112,7 @@ namespace Backend.Controllers
             var model = new PrisegtasFailas
             {
                 Id = Guid.NewGuid(),
-                Irasasid = irasasid,
+                ZingsnisId = zingsnisid,
                 FailoPav = file.FileName,
                 Dydis = file.Length,
                 Nuoroda = Path.Combine("uploads", savedFileName),

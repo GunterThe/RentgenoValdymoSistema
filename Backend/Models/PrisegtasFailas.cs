@@ -12,8 +12,8 @@ namespace Backend.Models
         [Column("id")]
         public Guid Id { get; set; }
 
-        [Column("irasasid")]
-        public int? Irasasid { get; set; }
+        [Column("zingsnis_id")]
+        public int? ZingsnisId { get; set; }
 
         [Column("failopav")]
         public string? FailoPav { get; set; }
@@ -28,6 +28,6 @@ namespace Backend.Models
         public DateTime? SukurimoLaikas { get; set; }
 
         [JsonIgnore]
-        public Irasas? Irasas { get; set; }
+        public Zingsnis? Zingsnis { get; set; }
     }
 }

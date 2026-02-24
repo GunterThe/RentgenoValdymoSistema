@@ -1,9 +1,11 @@
 using Backend.Data;
+using Backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,7 +58,9 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+        options.UseNpgsql(connectionString,
+        o => o.MapEnum<TestoTipas>("testotipas")));
+
 
 builder.Services.AddAuthorization(options =>
 {

@@ -20,9 +20,5 @@ namespace Backend.Models
         [ForeignKey(nameof(Irasasid))]
         [JsonIgnore]
         public Irasas? Irasas { get; set; }
-
-        [Required]
-        [Column("atliktas")]
-        public bool Atliktas { get; set; }
     }
 }
