@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict kJDWffnXuWPuK0eHCOony1b49ZpLHSVyLwaAPUNx5FivKrAjC2W3fGtDvSKP3IG
+\restrict 6FJnTlHebzqjcRaQUqvDgcYidpSUcNIrQfwkUoVsFBse5SxpmefAefHEvG50Ive
 
--- Dumped from database version 18.1
--- Dumped by pg_dump version 18.1
+-- Dumped from database version 18.2
+-- Dumped by pg_dump version 18.2
 
--- Started on 2026-02-16 16:30:41 EET
+-- Started on 2026-02-24 14:50:59 EET
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -173,6 +173,7 @@ ALTER TABLE public.testasirasas OWNER TO postgres;
 --
 
 COPY public.irasas (id, id_dokumento, pavadinimas, pradzia, pabaiga) FROM stdin;
+3	jo	jo	2026-02-21	2026-02-21
 1	buh	buh	2026-02-09	2026-02-09
 \.
 
@@ -184,6 +185,8 @@ COPY public.irasas (id, id_dokumento, pavadinimas, pradzia, pabaiga) FROM stdin;
 --
 
 COPY public.naudotojas (id, vardas, pavarde, gimimo_data, adminas, password_hash, prisijungimoid) FROM stdin;
+3fa85f64-5717-4562-b3fc-2c963f66afa6	Jonas	Jonaitis	2026-02-21	t	$2a$11$MirpBys88FNoulE9ZNSB7OCLe7090D7JGj3hNsrNf9Y0sXVXl0Iu2	jonas.jonaitis.3f25d9
+811e41c3-49b7-4496-8f72-a4bcdb53d405	Petras	Petraitis	2026-02-21	f	$2a$11$IXFRcEd.VMKt2TmHkWMjbuLxxCgI3GOGmHhhXi..d/wUHVmKctQWC	petras.petraitis.8a192e
 \.
 
 
@@ -194,6 +197,7 @@ COPY public.naudotojas (id, vardas, pavarde, gimimo_data, adminas, password_hash
 --
 
 COPY public.prisegtasfailas (id, irasasid, failopav, dydis, nuoroda, sukurimolaikas) FROM stdin;
+0695d72a-e7fe-4380-906e-156162ead170	1	agemasen (1).png	26567	uploads/57b62e5e-ce1d-43f5-a446-2b17c973e24f.png	2026-02-21
 \.
 
 
@@ -239,7 +243,7 @@ COPY public.testasirasas (testasid, irasasid, atliktas) FROM stdin;
 -- Name: irasas_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.irasas_id_seq', 1, true);
+SELECT pg_catalog.setval('public.irasas_id_seq', 3, true);
 
 
 --
@@ -341,11 +345,11 @@ ALTER TABLE ONLY public.testasirasas
     ADD CONSTRAINT testasirasas_testasid_fkey FOREIGN KEY (testasid) REFERENCES public.testas(id) ON DELETE CASCADE;
 
 
--- Completed on 2026-02-16 16:30:41 EET
+-- Completed on 2026-02-24 14:50:59 EET
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict kJDWffnXuWPuK0eHCOony1b49ZpLHSVyLwaAPUNx5FivKrAjC2W3fGtDvSKP3IG
+\unrestrict 6FJnTlHebzqjcRaQUqvDgcYidpSUcNIrQfwkUoVsFBse5SxpmefAefHEvG50Ive
 
