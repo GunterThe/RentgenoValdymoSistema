@@ -14,22 +14,36 @@ namespace Backend.Models
         public int Id { get; set; }
 
         [Required]
-        [Column("tekstas")]
-        public string Tekstas { get; set; } = null!;
-
-        [Required]
         [Column("komentaras")]
         public string Komentaras { get; set; } = null!;
 
         [Required]
-        [Column("pabaigtas")]
-        public bool Pabaigtas { get; set; }
+        [Column("completed_at")]
+        public DateTime? CompletedAt { get; set; }
 
         [Required]
-        [Column("testas_id")]
-        public int TestasId { get; set; }
+        [Column("irasas_testas_id")]
+        public int TestasIrasasId { get; set; }
+
+        [Required]
+        [Column("zingsnis_template_id")]
+        public int ZingsnisTemplateId { get; set; }
+
+        [Required]
+        [Column("completed_by_user_id")]
+        public Guid CompletedByUserId { get; set; }
 
         [JsonIgnore]
-        public Testas Testas { get; set; } = null!;
+        public TestasIrasas? TestasIrasas { get; set; }
+
+        [JsonIgnore]
+        public ZingsnisTemplate? ZingsnisTemplate { get; set; }
+
+        [JsonIgnore]
+        public Naudotojas? CompletedByUser { get; set; }
+
+        [NotMapped]
+        public bool Pabaigtas { get; set; }
+
     }
 }

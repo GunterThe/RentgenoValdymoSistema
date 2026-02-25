@@ -29,6 +29,7 @@ namespace Backend.Controllers
         [HttpPost]
         public async Task<ActionResult<Zingsnis>> Create(Zingsnis zingsnis)
         {
+            if (zingsnis.CompletedAt == null) zingsnis.Pabaigtas = false; else zingsnis.Pabaigtas = true;
             _db.Zingsniai.Add(zingsnis);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(Get), new { id = zingsnis.Id }, zingsnis);
@@ -37,6 +38,7 @@ namespace Backend.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, Zingsnis zingsnis)
         {
+            if (zingsnis.CompletedAt == null) zingsnis.Pabaigtas = false; else zingsnis.Pabaigtas = true;
             if (id != zingsnis.Id) return BadRequest();
             _db.Entry(zingsnis).State = EntityState.Modified;
             await _db.SaveChangesAsync();

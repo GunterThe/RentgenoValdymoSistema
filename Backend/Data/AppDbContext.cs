@@ -19,6 +19,7 @@ namespace Backend.Data
         public DbSet<PrisegtasFailas> PrisegtiFailai { get; set; } = null!;
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
         public DbSet<Zingsnis> Zingsniai { get; set; } = null!;
+        public DbSet<ZingsnisTemplate> ZingsnisTemplate { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,7 +32,11 @@ namespace Backend.Data
                 .HasColumnType("public.testotipas");
 
             modelBuilder.Entity<TestasIrasas>()
-                .HasKey(t => new { t.Testasid, t.Irasasid });
+                .HasKey(t => t.Id);
+            
+            modelBuilder.Entity<TestasIrasas>()
+                .HasIndex(t => new { t.Testasid, t.Irasasid })
+                .IsUnique();
 
             modelBuilder.Entity<PrisegtasFailas>()
                 .HasOne(p => p.Zingsnis)
@@ -40,9 +45,21 @@ namespace Backend.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Zingsnis>()
+                .HasOne(z => z.TestasIrasas)
+                .WithMany()
+                .HasForeignKey(z => z.TestasIrasasId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ZingsnisTemplate>()
                 .HasOne(z => z.Testas)
                 .WithMany()
                 .HasForeignKey(z => z.TestasId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            modelBuilder.Entity<Zingsnis>()
+                .HasOne(z => z.ZingsnisTemplate)
+                .WithMany()
+                .HasForeignKey(z => z.ZingsnisTemplateId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Testas>(entity =>

@@ -7,6 +7,10 @@ namespace Backend.Models
     [Table("testasirasas")]
     public class TestasIrasas
     {
+        [Key]
+        [Column("id")]
+        public int Id { get; set; }
+        
         [Column("testasid")]
         public int Testasid { get; set; }
 
