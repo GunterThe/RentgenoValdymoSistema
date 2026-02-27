@@ -245,4 +245,90 @@ class Api {
     );
     if (res.statusCode != 204) throw Exception('Failed to delete prisegtas failas');
   }
+
+  // ZingsnisTemplate
+  static Future<List<dynamic>> fetchZingsnisTemplates() async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(Uri.parse('$baseUrl/api/zingsnistemplate'), headers: h),
+    );
+    if (res.statusCode != 200) throw Exception('Failed to load zingsnis templates');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createZingsnisTemplate(
+    Map<String, dynamic> payload,
+  ) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(
+        Uri.parse('$baseUrl/api/zingsnistemplate'),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create zingsnis template');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateZingsnisTemplate(int id, Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(
+        Uri.parse('$baseUrl/api/zingsnistemplate/$id'),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update zingsnis template');
+  }
+
+  static Future<void> deleteZingsnisTemplate(int id) async {
+    final res = await _requestWithRefresh(
+      (h) => http.delete(Uri.parse('$baseUrl/api/zingsnistemplate/$id'), headers: h),
+    );
+    if (res.statusCode != 204) throw Exception('Failed to delete zingsnis template');
+  }
+
+  // Zingsnis (vykdymas)
+  static Future<List<dynamic>> fetchZingsniai() async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(Uri.parse('$baseUrl/api/zingsnis'), headers: h),
+    );
+    if (res.statusCode != 200) throw Exception('Failed to load zingsniai');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createZingsnis(
+    Map<String, dynamic> payload,
+  ) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(
+        Uri.parse('$baseUrl/api/zingsnis'),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create zingsnis');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateZingsnis(int id, Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(
+        Uri.parse('$baseUrl/api/zingsnis/$id'),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update zingsnis');
+  }
+
+  static Future<void> deleteZingsnis(int id) async {
+    final res = await _requestWithRefresh(
+      (h) => http.delete(Uri.parse('$baseUrl/api/zingsnis/$id'), headers: h),
+    );
+    if (res.statusCode != 204) throw Exception('Failed to delete zingsnis');
+  }
 }

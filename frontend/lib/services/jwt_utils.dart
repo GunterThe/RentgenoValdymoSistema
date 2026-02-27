@@ -1,23 +1,39 @@
 import 'dart:convert';
 
 class JwtUtils {
-  static DateTime? tryGetExpiryUtc(String jwt) {
+  static Map<String, dynamic>? _tryGetPayload(String jwt) {
     final parts = jwt.split('.');
     if (parts.length != 3) return null;
 
     try {
       final payload = _base64UrlDecode(parts[1]);
-      final map = jsonDecode(payload) as Map<String, dynamic>;
-      final exp = map['exp'];
-      if (exp is! num) return null;
-      return DateTime.fromMillisecondsSinceEpoch(
-        (exp * 1000).round(),
-        isUtc: true,
-      );
+      return jsonDecode(payload) as Map<String, dynamic>;
     } catch (_) {
       return null;
     }
   }
+
+  static DateTime? tryGetExpiryUtc(String jwt) {
+    final map = _tryGetPayload(jwt);
+    if (map == null) return null;
+    final exp = map['exp'];
+    if (exp is! num) return null;
+    return DateTime.fromMillisecondsSinceEpoch(
+      (exp * 1000).round(),
+      isUtc: true,
+    );
+  }
+
+  static String? tryGetClaim(String jwt, String claim) {
+    final map = _tryGetPayload(jwt);
+    if (map == null) return null;
+    final v = map[claim];
+    if (v == null) return null;
+    if (v is String) return v;
+    return v.toString();
+  }
+
+  static String? tryGetSubject(String jwt) => tryGetClaim(jwt, 'sub');
 
   static bool isExpired(
     String jwt, {

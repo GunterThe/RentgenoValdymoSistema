@@ -1,23 +1,23 @@
 class TestasIrasas {
-  final int testasid;
-  final int irasasid;
-  bool atliktas;
+  final int id;
+  final int testasId;
+  final int irasasId;
 
   TestasIrasas({
-    required this.testasid,
-    required this.irasasid,
-    required this.atliktas,
+    required this.id,
+    required this.testasId,
+    required this.irasasId,
   });
 
   factory TestasIrasas.fromJson(Map<String, dynamic> j) => TestasIrasas(
-    testasid: (j['testasid'] ?? j['Testasid']) as int,
-    irasasid: (j['irasasid'] ?? j['Irasasid']) as int,
-    atliktas: (j['atliktas'] ?? j['Atliktas'] ?? false) as bool,
-  );
+        id: j['id'] as int,
+        testasId: (j['testasid'] ?? j['testasId'] ?? 0) as int,
+        irasasId: (j['irasasid'] ?? j['irasasId'] ?? 0) as int,
+      );
 
   Map<String, dynamic> toJson() => {
-    'testasid': testasid,
-    'irasasid': irasasid,
-    'atliktas': atliktas,
-  };
+        'id': id,
+        'testasid': testasId,
+        'irasasid': irasasId,
+      };
 }

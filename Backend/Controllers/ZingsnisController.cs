@@ -25,6 +25,13 @@ namespace Backend.Controllers
             if (item == null) return NotFound();
             return item;
         }
+        [HttpGet("getByEverything/{testasIrasasId}/{zingsnisTemplateId}")]
+        public async Task<ActionResult<Zingsnis>> GetByEverything(int testasIrasasId, int zingsnisTemplateId)
+        {
+            var item = await _db.Zingsniai.FirstOrDefaultAsync(z => z.TestasIrasasId == testasIrasasId && z.ZingsnisTemplateId == zingsnisTemplateId);
+            if (item == null) return NotFound();
+            return item;
+        }
 
         [HttpPost]
         public async Task<ActionResult<Zingsnis>> Create(Zingsnis zingsnis)

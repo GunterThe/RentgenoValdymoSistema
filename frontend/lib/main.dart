@@ -109,7 +109,7 @@ class MyApp extends StatelessWidget {
 class MainPage extends StatelessWidget {
   const MainPage({super.key});
 
-  Widget _ActionTile({
+  Widget _actionTile({
     required BuildContext context,
     required IconData icon,
     required String title,
@@ -220,7 +220,7 @@ class MainPage extends StatelessWidget {
             Card(
               child: Column(
                 children: [
-                  _ActionTile(
+                  _actionTile(
                     context: context,
                     icon: Icons.article_outlined,
                     title: 'Peržiūrėti įrašus',
@@ -228,7 +228,7 @@ class MainPage extends StatelessWidget {
                     onTap: () => Navigator.of(context).pushNamed('/irasai'),
                   ),
                   const Divider(height: 1),
-                  _ActionTile(
+                  _actionTile(
                     context: context,
                     icon: Icons.science_outlined,
                     title: 'Peržiūrėti testus',

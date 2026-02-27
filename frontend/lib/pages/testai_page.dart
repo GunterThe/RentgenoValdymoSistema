@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api.dart';
 import '../models/testas.dart';
-import 'testas_form_page.dart';
+import 'zingsnis_page.dart';
 import '../widgets/app_scaffold.dart';
 
 class TestaiPage extends StatefulWidget {
@@ -15,8 +15,6 @@ class _TestaiPageState extends State<TestaiPage> {
   List<Testas> _items = [];
   bool _loading = true;
   String _query = '';
-  int? _sortColumnIndex;
-  bool _sortAscending = true;
 
   @override
   void initState() {
@@ -28,65 +26,151 @@ class _TestaiPageState extends State<TestaiPage> {
     setState(() => _loading = true);
     try {
       final list = await Api.fetchTestai();
-      _items = list.map((e) => Testas.fromJson(e as Map<String, dynamic>)).toList();
+      _items = list
+          .map((e) => Testas.fromJson(e as Map<String, dynamic>))
+          .toList();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Klaida kraunant testus: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Klaida kraunant testus: $e')),
+      );
     } finally {
       setState(() => _loading = false);
     }
   }
 
-  Future<void> _openForm({Testas? item}) async {
-    final changed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => TestasFormPage(item: item)),
+  Future<void> _createOrEdit({Testas? existing}) async {
+    final ctrl = TextEditingController(text: existing?.testotekstas ?? '');
+    String? tipas = existing?.tipas ?? 'Testas';
+
+    int? _tipasToIndex(String? t) {
+      if (t == null) return null;
+      switch (t) {
+        case 'Testas':
+          return 0;
+        case 'Isvezimas':
+          return 1;
+        case 'Pakavimas':
+          return 2;
+        default:
+          // try parse numeric
+          return int.tryParse(t);
+      }
+    }
+
+    final ok = await showDialog<bool?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(existing == null ? 'Naujas testas' : 'Redaguoti testą'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ctrl,
+              decoration: const InputDecoration(labelText: 'Testo tekstas'),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: tipas,
+              items: const [
+                DropdownMenuItem(value: 'Testas', child: Text('Testas')),
+                DropdownMenuItem(value: 'Isvezimas', child: Text('Išvežimas')),
+                DropdownMenuItem(value: 'Pakavimas', child: Text('Pakavimas')),
+              ],
+              onChanged: (v) => tipas = v,
+              decoration: const InputDecoration(labelText: 'Tipas'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Atšaukti')),
+          FilledButton(
+            onPressed: () async {
+              final text = ctrl.text.trim();
+              if (text.isEmpty) return;
+              Navigator.of(ctx).pop(true);
+            },
+            child: const Text('Išsaugoti'),
+          ),
+        ],
+      ),
     );
-    if (changed == true) {
-      await _load();
+
+    if (ok != true) return;
+
+    final text = ctrl.text.trim();
+    try {
+      if (existing == null) {
+        final created = await Api.createTestas({
+          'testotekstas': text,
+          'tipas': _tipasToIndex(tipas),
+        });
+        setState(() {
+          _items.add(Testas.fromJson(created));
+        });
+      } else {
+        final payload = {
+          'id': existing.id,
+          'testotekstas': text,
+          'tipas': _tipasToIndex(tipas),
+        };
+        await Api.updateTestas(existing.id, payload);
+        setState(() {
+          existing.testotekstas = text;
+          existing.tipas = tipas;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Klaida: $e')));
     }
   }
 
-  void _showChangesPlaceholder(Testas it) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Peržiūrėti pakeitimus - dar neįgyvendinta')),
+  Future<void> _delete(Testas it) async {
+    final ok = await showDialog<bool?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Pašalinti testą?'),
+        content: Text('Ar tikrai ištrinti "${it.testotekstas}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Ne')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Taip')),
+        ],
+      ),
     );
+    if (ok != true) return;
+    try {
+      await Api.deleteTestas(it.id);
+      setState(() => _items.removeWhere((e) => e.id == it.id));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Klaida trynimo metu: $e')));
+    }
   }
 
-  List<Testas> _filteredAndSortedItems() {
+  List<Testas> _filtered() {
     final q = _query.trim().toLowerCase();
-    final list = (q.isEmpty
-            ? _items
-            : _items.where((e) => e.testotekstas.toLowerCase().contains(q)))
-        .toList();
-
-    final col = _sortColumnIndex;
-    if (col == null) return list;
-
-    list.sort((a, b) {
-      int r;
-      switch (col) {
-        case 0:
-          r = a.testotekstas.toLowerCase().compareTo(b.testotekstas.toLowerCase());
-          break;
-        default:
-          r = 0;
-      }
-      return _sortAscending ? r : -r;
-    });
-    return list;
+    if (q.isEmpty) return _items;
+    return _items.where((e) => e.testotekstas.toLowerCase().contains(q)).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final shown = _filteredAndSortedItems();
+    final shown = _filtered();
     return AppScaffold(
-      title: 'Peržiūrėti testus',
+      title: 'Testai',
       actions: [
         IconButton(
           tooltip: 'Atnaujinti',
           onPressed: _loading ? null : _load,
           icon: const Icon(Icons.refresh),
-        )
+        ),
       ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _createOrEdit(),
+        icon: const Icon(Icons.playlist_add),
+        label: const Text('Naujas testas'),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -111,9 +195,7 @@ class _TestaiPageState extends State<TestaiPage> {
                                   child: Text(
                                     'Nėra testų',
                                     style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 )
@@ -121,46 +203,37 @@ class _TestaiPageState extends State<TestaiPage> {
                                   scrollDirection: Axis.horizontal,
                                   child: SingleChildScrollView(
                                     child: DataTable(
-                                      sortColumnIndex: _sortColumnIndex,
-                                      sortAscending: _sortAscending,
-                                      columns: [
-                                        DataColumn(
-                                          label: const Text('Tekstas'),
-                                          onSort: (i, asc) => setState(() {
-                                            _sortColumnIndex = i;
-                                            _sortAscending = asc;
-                                          }),
-                                        ),
-                                        const DataColumn(
-                                          label: Text('Veiksmai'),
-                                        ),
+                                      columns: const [
+                                        DataColumn(label: Text('Tekstas')),
+                                        DataColumn(label: Text('Tipas')),
+                                        DataColumn(label: Text('Veiksmai')),
                                       ],
                                       rows: shown.map((it) {
-                                        return DataRow(
-                                          cells: [
-                                            DataCell(Text(it.testotekstas)),
-                                            DataCell(
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  OutlinedButton(
-                                                    onPressed: () =>
-                                                        _showChangesPlaceholder(it),
-                                                    child: const Text(
-                                                        'Peržiūrėti pakeitimus'),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  FilledButton(
-                                                    onPressed: () =>
-                                                        _openForm(item: it),
-                                                    child:
-                                                        const Text('Redaguoti'),
-                                                  ),
-                                                ],
+                                        return DataRow(cells: [
+                                          DataCell(Text(it.testotekstas)),
+                                          DataCell(Text(it.tipas ?? '')), 
+                                          DataCell(Row(
+                                            children: [
+                                              IconButton(
+                                                tooltip: 'Redaguoti',
+                                                onPressed: () => _createOrEdit(existing: it),
+                                                icon: const Icon(Icons.edit),
                                               ),
-                                            ),
-                                          ],
-                                        );
+                                              IconButton(
+                                                tooltip: 'Žingsniai',
+                                                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                                                  builder: (_) => ZingsnisPage(testas: it),
+                                                )),
+                                                icon: const Icon(Icons.format_list_numbered),
+                                              ),
+                                              IconButton(
+                                                tooltip: 'Ištrinti',
+                                                onPressed: () => _delete(it),
+                                                icon: const Icon(Icons.delete_outline),
+                                              ),
+                                            ],
+                                          )),
+                                        ]);
                                       }).toList(),
                                     ),
                                   ),
@@ -172,11 +245,6 @@ class _TestaiPageState extends State<TestaiPage> {
                 ),
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openForm(),
-        icon: const Icon(Icons.playlist_add),
-        label: const Text('Naujas testas'),
-      ),
     );
   }
 }
