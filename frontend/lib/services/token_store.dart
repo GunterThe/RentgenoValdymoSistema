@@ -19,7 +19,7 @@ class TokenStore {
   static final TokenStore instance = TokenStore._();
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
   );
 
   AuthTokens? _cache;

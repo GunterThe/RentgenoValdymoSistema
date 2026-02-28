@@ -42,6 +42,17 @@ class Api {
   static Uri prisegtasFailasDownloadUri(String id) {
     return Uri.parse('$baseUrl/api/prisegtasfailas/download/$id');
   }
+
+  // Naudotojai
+  static Future<Map<String, dynamic>> fetchNaudotojas(String id) async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(Uri.parse('$baseUrl/api/Naudotojas/$id'), headers: h),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load naudotojas');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
   // Irašai
   static Future<List<dynamic>> fetchIrasai() async {
     final res = await _requestWithRefresh(
@@ -178,6 +189,16 @@ class Api {
     if (res.statusCode != 204) throw Exception('Failed to delete testasirasas');
   }
 
+  static Future<void> deleteTestasIrasasById(int id) async {
+    final res = await _requestWithRefresh(
+      (h) => http.delete(
+        Uri.parse('$baseUrl/api/testasirasas/$id'),
+        headers: h,
+      ),
+    );
+    if (res.statusCode != 204) throw Exception('Failed to delete testasirasas');
+  }
+
   // Prisegti failai
   static Future<List<dynamic>> fetchPrisegtiFailaiByIrasas(int irasasid) async {
     final res = await _requestWithRefresh(
@@ -244,6 +265,63 @@ class Api {
       ),
     );
     if (res.statusCode != 204) throw Exception('Failed to delete prisegtas failas');
+  }
+
+  static Future<List<dynamic>> fetchPrisegtiFailaiByZingsnis(int zingsnisId) async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(
+        Uri.parse('$baseUrl/api/prisegtasfailas/byZingsnis/$zingsnisId'),
+        headers: h,
+      ),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load prisegti failai');
+    }
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> uploadPrisegtasFailasToZingsnis({
+    required int zingsnisId,
+    required String fileName,
+    String? filePath,
+    List<int>? bytes,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/prisegtasfailas/upload/$zingsnisId');
+
+    Future<http.StreamedResponse> sendOnce() async {
+      final req = http.MultipartRequest('POST', uri);
+      final headers = await _headers();
+      req.headers.addAll(headers);
+
+      if (bytes != null) {
+        req.files.add(
+          http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+        );
+      } else if (filePath != null) {
+        req.files.add(
+          await http.MultipartFile.fromPath('file', filePath, filename: fileName),
+        );
+      } else {
+        throw ArgumentError('Either bytes or filePath must be provided');
+      }
+
+      return req.send();
+    }
+
+    var streamed = await sendOnce();
+    if (streamed.statusCode == 401) {
+      await AuthService.instance.refreshTokens();
+      streamed = await sendOnce();
+      if (streamed.statusCode == 401) {
+        await AuthService.instance.logout();
+      }
+    }
+
+    final body = await streamed.stream.bytesToString();
+    if (streamed.statusCode != 201) {
+      throw Exception('Failed to upload file (${streamed.statusCode}): $body');
+    }
+    return jsonDecode(body) as Map<String, dynamic>;
   }
 
   // ZingsnisTemplate

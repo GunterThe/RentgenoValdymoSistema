@@ -5,6 +5,7 @@ using Backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using System.Linq;
 
 namespace Backend.Controllers
 {
@@ -19,10 +20,20 @@ namespace Backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TestasIrasas>>> GetAll() => await _db.TestasIrasai.ToListAsync();
 
-        [HttpGet("{testasid}/{irasasid}")]
-        public async Task<ActionResult<TestasIrasas>> Get(int testasid, int irasasid)
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<TestasIrasas>> GetById(int id)
         {
-            var item = await _db.TestasIrasai.FindAsync(testasid, irasasid);
+            var item = await _db.TestasIrasai.FindAsync(id);
+            if (item == null) return NotFound();
+            return item;
+        }
+
+        // Backwards compatible route (composite unique index)
+        [HttpGet("{testasid:int}/{irasasid:int}")]
+        public async Task<ActionResult<TestasIrasas>> GetByPair(int testasid, int irasasid)
+        {
+            var item = await _db.TestasIrasai
+                .FirstOrDefaultAsync(x => x.Testasid == testasid && x.Irasasid == irasasid);
             if (item == null) return NotFound();
             return item;
         }
@@ -33,25 +44,53 @@ namespace Backend.Controllers
             _db.TestasIrasai.Add(model);
             await _db.SaveChangesAsync();
             return CreatedAtAction(
-                nameof(Get),
-                new { testasid = model.Testasid, irasasid = model.Irasasid },
+                nameof(GetById),
+                new { id = model.Id },
                 model
             );
         }
 
-        [HttpPut("{testasid}/{irasasid}")]
-        public async Task<IActionResult> Update(int testasid, int irasasid, TestasIrasas model)
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id, TestasIrasas model)
         {
-            if (testasid != model.Testasid || irasasid != model.Irasasid) return BadRequest();
+            if (id != model.Id) return BadRequest();
             _db.Entry(model).State = EntityState.Modified;
             await _db.SaveChangesAsync();
             return NoContent();
         }
 
-        [HttpDelete("{testasid}/{irasasid}")]
-        public async Task<IActionResult> Delete(int testasid, int irasasid)
+        // Backwards compatible route
+        [HttpPut("{testasid:int}/{irasasid:int}")]
+        public async Task<IActionResult> UpdateByPair(int testasid, int irasasid, TestasIrasas model)
         {
-            var item = await _db.TestasIrasai.FindAsync(testasid, irasasid);
+            if (testasid != model.Testasid || irasasid != model.Irasasid) return BadRequest();
+
+            var existing = await _db.TestasIrasai
+                .FirstOrDefaultAsync(x => x.Testasid == testasid && x.Irasasid == irasasid);
+            if (existing == null) return NotFound();
+
+            existing.Testasid = model.Testasid;
+            existing.Irasasid = model.Irasasid;
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var item = await _db.TestasIrasai.FindAsync(id);
+            if (item == null) return NotFound();
+            _db.TestasIrasai.Remove(item);
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // Backwards compatible route
+        [HttpDelete("{testasid:int}/{irasasid:int}")]
+        public async Task<IActionResult> DeleteByPair(int testasid, int irasasid)
+        {
+            var item = await _db.TestasIrasai
+                .FirstOrDefaultAsync(x => x.Testasid == testasid && x.Irasasid == irasasid);
             if (item == null) return NotFound();
             _db.TestasIrasai.Remove(item);
             await _db.SaveChangesAsync();

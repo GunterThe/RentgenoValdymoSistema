@@ -15,6 +15,7 @@ class ZingsnisPage extends StatefulWidget {
 class _ZingsnisPageState extends State<ZingsnisPage> {
   List<ZingsnisTemplate> _items = [];
   bool _loading = true;
+  bool _reordering = false;
 
   @override
   void initState() {
@@ -42,7 +43,6 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
   Future<void> _createOrEdit({ZingsnisTemplate? existing}) async {
     final titleCtrl = TextEditingController(text: existing?.pavadinimas ?? '');
     final descCtrl = TextEditingController(text: existing?.aprasymas ?? '');
-    final orderCtrl = TextEditingController(text: existing?.eile.toString() ?? '0');
 
     final ok = await showDialog<bool?>(
       context: context,
@@ -54,8 +54,6 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
             TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Pavadinimas')),
             const SizedBox(height: 8),
             TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Aprašymas')),
-            const SizedBox(height: 8),
-            TextField(controller: orderCtrl, decoration: const InputDecoration(labelText: 'Eilė'), keyboardType: TextInputType.number),
           ],
         ),
         actions: [
@@ -68,7 +66,7 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
 
     final title = titleCtrl.text.trim();
     final desc = descCtrl.text.trim();
-    final order = int.tryParse(orderCtrl.text.trim()) ?? 0;
+    if (title.isEmpty || desc.isEmpty) return;
 
     try {
       if (existing == null) {
@@ -76,27 +74,62 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
           'pavadinimas': title,
           'aprasymas': desc,
           'testasId': widget.testas.id,
-          'eile': order,
         });
-        setState(() => _items.add(ZingsnisTemplate.fromJson(created)));
+        setState(() {
+          _items.add(ZingsnisTemplate.fromJson(created));
+          _items.sort((a, b) => a.eile.compareTo(b.eile));
+        });
       } else {
         final payload = {
           'id': existing.id,
           'pavadinimas': title,
           'aprasymas': desc,
           'testasId': widget.testas.id,
-          'eile': order,
+          'eile': existing.eile,
         };
         await Api.updateZingsnisTemplate(existing.id, payload);
         setState(() {
           existing.pavadinimas = title;
           existing.aprasymas = desc;
-          existing.eile = order;
         });
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Klaida: $e')));
+    }
+  }
+
+  Future<void> _onReorder(int oldIndex, int newIndex) async {
+    if (_reordering) return;
+    if (oldIndex < 0 || oldIndex >= _items.length) return;
+
+    setState(() => _reordering = true);
+    try {
+      // Reorder in-memory list.
+      if (newIndex > oldIndex) newIndex -= 1;
+      final moved = _items.removeAt(oldIndex);
+      _items.insert(newIndex, moved);
+
+      // Persist only the moved item's new position; backend will shift others.
+      final newEile = newIndex + 1;
+      final payload = {
+        'id': moved.id,
+        'pavadinimas': moved.pavadinimas,
+        'aprasymas': moved.aprasymas,
+        'testasId': moved.testasId,
+        'eile': newEile,
+      };
+      await Api.updateZingsnisTemplate(moved.id, payload);
+
+      if (!mounted) return;
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Klaida rikiuojant: $e')));
+      await _load();
+    } finally {
+      if (mounted) setState(() => _reordering = false);
     }
   }
 
@@ -141,18 +174,43 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
                               ? Center(
                                   child: Text('Nėra žingsnių', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                                 )
-                              : ListView.separated(
+                              : ReorderableListView.builder(
+                                  buildDefaultDragHandles: false,
+                                  onReorder: _onReorder,
                                   itemCount: _items.length,
-                                  separatorBuilder: (_, __) => const Divider(height: 1),
                                   itemBuilder: (ctx, i) {
                                     final it = _items[i];
-                                    return ListTile(
-                                      title: Text(it.pavadinimas),
-                                      subtitle: Text(it.aprasymas),
-                                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                                        IconButton(onPressed: () => _createOrEdit(existing: it), icon: const Icon(Icons.edit)),
-                                        IconButton(onPressed: () => _delete(it), icon: const Icon(Icons.delete_outline)),
-                                      ]),
+                                    return Column(
+                                      key: ValueKey(it.id),
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        ListTile(
+                                          title: Text('${it.eile}. ${it.pavadinimas}'),
+                                          subtitle: Text(it.aprasymas),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                onPressed: _reordering ? null : () => _createOrEdit(existing: it),
+                                                icon: const Icon(Icons.edit),
+                                              ),
+                                              IconButton(
+                                                onPressed: _reordering ? null : () => _delete(it),
+                                                icon: const Icon(Icons.delete_outline),
+                                              ),
+                                              ReorderableDragStartListener(
+                                                index: i,
+                                                enabled: !_reordering,
+                                                child: const Padding(
+                                                  padding: EdgeInsets.symmetric(horizontal: 8),
+                                                  child: Icon(Icons.drag_handle),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const Divider(height: 1),
+                                      ],
                                     );
                                   },
                                 ),

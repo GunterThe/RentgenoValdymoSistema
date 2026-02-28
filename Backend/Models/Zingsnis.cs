@@ -17,7 +17,6 @@ namespace Backend.Models
         [Column("komentaras")]
         public string Komentaras { get; set; } = null!;
 
-        [Required]
         [Column("completed_at")]
         public DateTime? CompletedAt { get; set; }
 
