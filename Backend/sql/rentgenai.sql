@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict Wk1Cl7oyvr6whZ7J4x2H9amWzvXglgB1k0voqm5Sgf4gBvwX8L4yZve0nKwABdu
+\restrict hqSctfmvkgjYPdqjuAkpXQzA55WrQh9AqpMyMRGiwvd68PHu1JfOZWgnUOz57V9
 
--- Dumped from database version 18.2
--- Dumped by pg_dump version 18.2
+-- Dumped from database version 18.3
+-- Dumped by pg_dump version 18.3
 
--- Started on 2026-02-27 14:22:44 EET
+-- Started on 2026-03-05 22:26:47 EET
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -268,6 +268,7 @@ ALTER TABLE public.zingsnis_template ALTER COLUMN id ADD GENERATED ALWAYS AS IDE
 COPY public.irasas (id, id_dokumento, pavadinimas, pradzia, pabaiga) FROM stdin;
 3	jo	jo	2026-02-21	2026-02-21
 1	buh	buh	2026-02-09	2026-02-09
+4	yerttwfds	dsawqeqcxz	2026-02-27	2026-03-04
 \.
 
 
@@ -291,6 +292,8 @@ COPY public.naudotojas (id, vardas, pavarde, gimimo_data, adminas, password_hash
 
 COPY public.prisegtasfailas (id, failopav, dydis, nuoroda, sukurimolaikas, zingsnis_id) FROM stdin;
 0695d72a-e7fe-4380-906e-156162ead170	agemasen (1).png	26567	uploads/57b62e5e-ce1d-43f5-a446-2b17c973e24f.png	2026-02-21	\N
+cfe2c063-78c4-4f67-a18d-a600f7d57da9	juh-3x.avif	240352	uploads/c3d0bc7d-eef5-4424-98c7-1d0bcbf42570.avif	2026-02-27	1
+92a0a818-9a6f-48b0-a3da-ba6bcddd0868	agemasen (1).png	26567	uploads/628e6a87-1f31-4701-b3cb-829a473c4654.png	2026-02-27	2
 \.
 
 
@@ -313,6 +316,7 @@ COPY public.refreshtoken (id, token, expires, revoked, naudotojasid) FROM stdin;
 COPY public.testas (id, testotekstas, tipas) FROM stdin;
 4	dsa	isvezimas
 5	ddd	isvezimas
+6	Standartinis testas	testas
 \.
 
 
@@ -335,8 +339,8 @@ COPY public.testasirasas (testasid, irasasid, id) FROM stdin;
 --
 
 COPY public.zingsnis (id, komentaras, irasas_testas_id, zingsnis_template_id, completed_by_user_id, completed_at) FROM stdin;
-1	nice bro	4	4	3fa85f64-5717-4562-b3fc-2c963f66afa6	2026-02-26 16:48:48.299
-2	dddd	4	6	3fa85f64-5717-4562-b3fc-2c963f66afa6	2026-02-26 16:52:02.955
+1	nice bro	4	4	3fa85f64-5717-4562-b3fc-2c963f66afa6	2026-02-27 14:38:41.409
+2	dddd	4	6	3fa85f64-5717-4562-b3fc-2c963f66afa6	2026-02-27 14:39:11.969
 \.
 
 
@@ -347,9 +351,14 @@ COPY public.zingsnis (id, komentaras, irasas_testas_id, zingsnis_template_id, co
 --
 
 COPY public.zingsnis_template (id, testas_id, pavadinimas, aprasymas, eile) FROM stdin;
-4	4	:D	:(	0
-5	4	ddd	ddd	0
-6	4	gfsdf	dsadsa	0
+4	4	:D	:(	1
+6	4	gfsdf	dsadsa	2
+5	4	ddd	ddd	3
+7	4	be happy	be happy	4
+8	6	abc	abc	4
+9	6	abc1	abc1	1
+10	6	asddsaasd	ferqe	3
+11	6	bfdgrw	wqesda	2
 \.
 
 
@@ -359,7 +368,7 @@ COPY public.zingsnis_template (id, testas_id, pavadinimas, aprasymas, eile) FROM
 -- Name: irasas_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.irasas_id_seq', 3, true);
+SELECT pg_catalog.setval('public.irasas_id_seq', 4, true);
 
 
 --
@@ -368,7 +377,7 @@ SELECT pg_catalog.setval('public.irasas_id_seq', 3, true);
 -- Name: testas_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.testas_id_seq', 5, true);
+SELECT pg_catalog.setval('public.testas_id_seq', 6, true);
 
 
 --
@@ -377,7 +386,7 @@ SELECT pg_catalog.setval('public.testas_id_seq', 5, true);
 -- Name: testasirasas_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.testasirasas_id_seq', 5, true);
+SELECT pg_catalog.setval('public.testasirasas_id_seq', 6, true);
 
 
 --
@@ -386,7 +395,7 @@ SELECT pg_catalog.setval('public.testasirasas_id_seq', 5, true);
 -- Name: zingsnis_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.zingsnis_id_seq', 2, true);
+SELECT pg_catalog.setval('public.zingsnis_id_seq', 3, true);
 
 
 --
@@ -395,7 +404,7 @@ SELECT pg_catalog.setval('public.zingsnis_id_seq', 2, true);
 -- Name: zingsnis_template_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.zingsnis_template_id_seq', 6, true);
+SELECT pg_catalog.setval('public.zingsnis_template_id_seq', 11, true);
 
 
 --
@@ -551,11 +560,11 @@ ALTER TABLE ONLY public.testasirasas
     ADD CONSTRAINT testasirasas_testasid_fkey FOREIGN KEY (testasid) REFERENCES public.testas(id) ON DELETE CASCADE;
 
 
--- Completed on 2026-02-27 14:22:44 EET
+-- Completed on 2026-03-05 22:26:47 EET
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Wk1Cl7oyvr6whZ7J4x2H9amWzvXglgB1k0voqm5Sgf4gBvwX8L4yZve0nKwABdu
+\unrestrict hqSctfmvkgjYPdqjuAkpXQzA55WrQh9AqpMyMRGiwvd68PHu1JfOZWgnUOz57V9
 

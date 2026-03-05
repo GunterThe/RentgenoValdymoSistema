@@ -12,6 +12,7 @@ using NpgsqlTypes;
 namespace Backend.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class TestasController : ControllerBase
     {

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace Backend.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class NaudotojasController : ControllerBase
     {

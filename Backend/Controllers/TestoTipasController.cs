@@ -5,10 +5,12 @@ using System.Reflection;
 using Backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using NpgsqlTypes;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Backend.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class TestoTipasController : ControllerBase
     {
