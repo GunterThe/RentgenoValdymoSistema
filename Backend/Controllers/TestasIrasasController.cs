@@ -39,9 +39,12 @@ namespace Backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<TestasIrasas>> Create(TestasIrasas model)
         {
             _db.TestasIrasai.Add(model);
+            var last = await _db.TestasIrasai.Where(z => z.Irasasid == model.Irasasid).OrderByDescending(z => z.Eile).FirstOrDefaultAsync();
+            model.Eile = last == null ? 1 : last.Eile + 1;
             await _db.SaveChangesAsync();
             return CreatedAtAction(
                 nameof(GetById),
@@ -51,6 +54,7 @@ namespace Backend.Controllers
         }
 
         [HttpPut("{id:int}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Update(int id, TestasIrasas model)
         {
             if (id != model.Id) return BadRequest();
@@ -61,6 +65,7 @@ namespace Backend.Controllers
 
         // Backwards compatible route
         [HttpPut("{testasid:int}/{irasasid:int}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> UpdateByPair(int testasid, int irasasid, TestasIrasas model)
         {
             if (testasid != model.Testasid || irasasid != model.Irasasid) return BadRequest();
@@ -76,6 +81,7 @@ namespace Backend.Controllers
         }
 
         [HttpDelete("{id:int}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Delete(int id)
         {
             var item = await _db.TestasIrasai.FindAsync(id);
@@ -87,6 +93,7 @@ namespace Backend.Controllers
 
         // Backwards compatible route
         [HttpDelete("{testasid:int}/{irasasid:int}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> DeleteByPair(int testasid, int irasasid)
         {
             var item = await _db.TestasIrasai

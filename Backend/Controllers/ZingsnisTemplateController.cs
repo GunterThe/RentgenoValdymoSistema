@@ -30,6 +30,7 @@ namespace Backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<ZingsnisTemplate>> Create(ZingsnisTemplate template)
         {
             int eile = 1;
@@ -42,6 +43,7 @@ namespace Backend.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Update(int id, ZingsnisTemplate template)
         {
             if (id != template.Id) return BadRequest();
@@ -97,6 +99,7 @@ namespace Backend.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Delete(int id)
         {
             var item = await _db.ZingsnisTemplate.FindAsync(id);

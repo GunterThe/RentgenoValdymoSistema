@@ -21,6 +21,7 @@ namespace Backend.Controllers
         public async Task<ActionResult<IEnumerable<Naudotojas>>> GetAll() => await _db.Naudotojai.ToListAsync();
 
         [HttpGet("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<Naudotojas>> Get(Guid id)
         {
             var item = await _db.Naudotojai.FindAsync(id);
@@ -29,11 +30,12 @@ namespace Backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<Naudotojas>> Create(Naudotojas naudotojas)
         {
             if (naudotojas.Id == Guid.Empty) naudotojas.Id = Guid.NewGuid();
             naudotojas.PasswordHash = BCrypt.Net.BCrypt.HashPassword(naudotojas.PasswordHash);
-            naudotojas.PrisijungimoId = naudotojas.Vardas.ToLower() + "." + naudotojas.Pavarde.ToLower() + "." + Guid.NewGuid().ToString("N").Substring(0, 6);
+            naudotojas.PrisijungimoId = naudotojas.Vardas.ToLower() + "." + naudotojas.Pavarde.ToLower() + "." + Guid.NewGuid().ToString("N").Substring(0, 3);
             naudotojas.Id = Guid.NewGuid();
             _db.Naudotojai.Add(naudotojas);
             await _db.SaveChangesAsync();
@@ -41,6 +43,7 @@ namespace Backend.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Update(Guid id, Naudotojas naudotojas)
         {
             if (id != naudotojas.Id) return BadRequest();
@@ -48,8 +51,23 @@ namespace Backend.Controllers
             await _db.SaveChangesAsync();
             return NoContent();
         }
+        [HttpPut("changePassword/{id}")]
+        public async Task<IActionResult> ChangePassword(Guid id, [FromBody] string newPassword, [FromBody] string currentPassword)
+        {
+            var user = await _db.Naudotojai.FindAsync(id);
+            if (user == null) return NotFound();
+            if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
+            {
+                return Unauthorized(new { message = "Current password is incorrect" });
+            }
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            _db.Entry(user).State = EntityState.Modified;
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Delete(Guid id)
         {
             var item = await _db.Naudotojai.FindAsync(id);

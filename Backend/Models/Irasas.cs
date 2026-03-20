@@ -21,13 +21,11 @@ namespace Backend.Models
         [Column("pavadinimas")]
         public string Pavadinimas { get; set; } = null!;
 
-        [Required]
         [Column("pradzia")]
         public DateTime Pradzia { get; set; }
 
-        [Required]
         [Column("pabaiga")]
-        public DateTime Pabaiga { get; set; }
+        public DateTime? Pabaiga { get; set; }
 
         [JsonIgnore]
         public ICollection<TestasIrasas> Testai { get; set; } = new List<TestasIrasas>();

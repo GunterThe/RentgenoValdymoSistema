@@ -40,22 +40,25 @@ namespace Backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<Irasas>> Create(Irasas irasas)
         {
-            irasas.Pradzia = EnsureUtc(irasas.Pradzia);
-            irasas.Pabaiga = EnsureUtc(irasas.Pabaiga);
+            irasas.Pradzia = EnsureUtc(DateTime.UtcNow);
+            irasas.Pabaiga = null;
             _db.Irasai.Add(irasas);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(Get), new { id = irasas.Id }, irasas);
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Update(int id, Irasas irasas)
         {
             if (id != irasas.Id) return BadRequest();
 
             irasas.Pradzia = EnsureUtc(irasas.Pradzia);
-            irasas.Pabaiga = EnsureUtc(irasas.Pabaiga);
+            if (irasas.Pabaiga != null)
+                irasas.Pabaiga = EnsureUtc((DateTime)irasas.Pabaiga);
 
             _db.Entry(irasas).State = EntityState.Modified;
             await _db.SaveChangesAsync();

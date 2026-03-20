@@ -42,11 +42,19 @@ class _IrasaiPageState extends State<IrasaiPage> {
     }
   }
 
-  String _fmtDate(DateTime dt) {
+  String _fmtDate(DateTime? dt) {
+    if (dt == null) return '---';
     final d = dt.day.toString().padLeft(2, '0');
     final m = dt.month.toString().padLeft(2, '0');
     final y = dt.year.toString();
     return '$y-$m-$d';
+  }
+
+  int _compareNullableDate(DateTime? a, DateTime? b) {
+    if (a == null && b == null) return 0;
+    if (a == null) return -1;
+    if (b == null) return 1;
+    return a.compareTo(b);
   }
 
   List<Irasas> _filteredAndSortedItems() {
@@ -75,7 +83,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
           r = a.pradzia.compareTo(b.pradzia);
           break;
         case 3:
-          r = a.pabaiga.compareTo(b.pabaiga);
+          r = _compareNullableDate(a.pabaiga, b.pabaiga);
           break;
         default:
           r = 0;
@@ -89,7 +97,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
     final idDocCtrl = TextEditingController(text: it.idDokumento);
     final pavCtrl = TextEditingController(text: it.pavadinimas);
     var pradzia = it.pradzia;
-    var pabaiga = it.pabaiga;
+    DateTime? pabaiga = it.pabaiga;
 
     final ok = await showDialog<bool?>(
       context: context,
@@ -123,7 +131,6 @@ class _IrasaiPageState extends State<IrasaiPage> {
                         if (picked == null) return;
                         setLocal(() {
                           pradzia = DateTime(picked.year, picked.month, picked.day);
-                          if (pabaiga.isBefore(pradzia)) pabaiga = pradzia;
                         });
                       },
                       child: Text('Pradžia: ${_fmtDate(pradzia)}'),
@@ -135,7 +142,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
                       onPressed: () async {
                         final picked = await showDatePicker(
                           context: ctx,
-                          initialDate: pabaiga,
+                          initialDate: pabaiga ?? pradzia,
                           firstDate: pradzia,
                           lastDate: DateTime(2100),
                         );
@@ -172,7 +179,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
       'pavadinimas': pavCtrl.text.trim(),
       'idDokumento': idDocCtrl.text.trim(),
       'pradzia': pradzia.toUtc().toIso8601String(),
-      'pabaiga': pabaiga.toUtc().toIso8601String(),
+      'pabaiga': pabaiga == null ? null : pabaiga!.toUtc().toIso8601String(),
     };
 
     try {
@@ -198,7 +205,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
     final idDocCtrl = TextEditingController();
     final pavCtrl = TextEditingController();
     var pradzia = DateTime.now();
-    var pabaiga = DateTime.now();
+    DateTime? pabaiga;
 
     final ok = await showDialog<bool?>(
       context: context,
@@ -232,7 +239,6 @@ class _IrasaiPageState extends State<IrasaiPage> {
                         if (picked == null) return;
                         setLocal(() {
                           pradzia = DateTime(picked.year, picked.month, picked.day);
-                          if (pabaiga.isBefore(pradzia)) pabaiga = pradzia;
                         });
                       },
                       child: Text('Pradžia: ${_fmtDate(pradzia)}'),
@@ -244,7 +250,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
                       onPressed: () async {
                         final picked = await showDatePicker(
                           context: ctx,
-                          initialDate: pabaiga,
+                          initialDate: pabaiga ?? pradzia,
                           firstDate: pradzia,
                           lastDate: DateTime(2100),
                         );
@@ -280,7 +286,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
       'pavadinimas': pavCtrl.text.trim(),
       'idDokumento': idDocCtrl.text.trim(),
       'pradzia': pradzia.toUtc().toIso8601String(),
-      'pabaiga': pabaiga.toUtc().toIso8601String(),
+      'pabaiga': pabaiga == null ? null : pabaiga!.toUtc().toIso8601String(),
     };
 
     if ((payload['pavadinimas'] as String).isEmpty ||

@@ -31,6 +31,7 @@ namespace Backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<Testas>> Create(Testas testas)
         {
             // Avoid EF trying to send enum as text; cast explicitly to Postgres enum type.
@@ -66,6 +67,7 @@ namespace Backend.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Update(int id, Testas testas)
         {
             if (id != testas.Id) return BadRequest();
@@ -102,6 +104,7 @@ namespace Backend.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Delete(int id)
         {
             var item = await _db.Testai.FindAsync(id);

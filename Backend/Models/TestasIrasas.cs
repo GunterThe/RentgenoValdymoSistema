@@ -17,6 +17,9 @@ namespace Backend.Models
         [Column("irasasid")]
         public int Irasasid { get; set; }
 
+        [Column("eile")]
+        public int Eile { get; set; }
+
         [ForeignKey(nameof(Testasid))]
         [JsonIgnore]
         public Testas? Testas { get; set; }
