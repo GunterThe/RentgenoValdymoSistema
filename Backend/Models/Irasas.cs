@@ -26,6 +26,9 @@ namespace Backend.Models
 
         [Column("pabaiga")]
         public DateTime? Pabaiga { get; set; }
+        
+        [Column("statusas")]
+        public string Statusas { get; set; } = null!;
 
         [JsonIgnore]
         public ICollection<TestasIrasas> Testai { get; set; } = new List<TestasIrasas>();

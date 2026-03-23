@@ -17,15 +17,23 @@ namespace Backend.Controllers
         private readonly AppDbContext _db;
         public NaudotojasController(AppDbContext db) => _db = db;
 
+        public sealed class ChangePasswordRequest
+        {
+            public string CurrentPassword { get; set; } = string.Empty;
+            public string NewPassword { get; set; } = string.Empty;
+        }
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Naudotojas>>> GetAll() => await _db.Naudotojai.ToListAsync();
 
         [HttpGet("{id}")]
-        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<Naudotojas>> Get(Guid id)
         {
             var item = await _db.Naudotojai.FindAsync(id);
             if (item == null) return NotFound();
+            item.PasswordHash = "";
+            item.PrisijungimoId = "";
+            item.Adminas = false;
             return item;
         }
 
@@ -51,11 +59,19 @@ namespace Backend.Controllers
             await _db.SaveChangesAsync();
             return NoContent();
         }
-        [HttpPut("changePassword/{id}")]
-        public async Task<IActionResult> ChangePassword(Guid id, [FromBody] string newPassword, [FromBody] string currentPassword)
+        [HttpPut("changePassword/{id:guid}")]
+        public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordRequest req)
         {
             var user = await _db.Naudotojai.FindAsync(id);
             if (user == null) return NotFound();
+
+            var currentPassword = (req.CurrentPassword ?? string.Empty).Trim();
+            var newPassword = (req.NewPassword ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(currentPassword) || string.IsNullOrWhiteSpace(newPassword))
+            {
+                return BadRequest(new { message = "CurrentPassword and NewPassword are required" });
+            }
+
             if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
             {
                 return Unauthorized(new { message = "Current password is incorrect" });

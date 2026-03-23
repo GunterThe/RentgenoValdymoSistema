@@ -49,6 +49,79 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
 
   static const _emptyGuid = '00000000-0000-0000-0000-000000000000';
 
+  List<TestasIrasas> _sortedLinks() {
+    final list = [..._links];
+    list.sort((a, b) {
+      final ae = a.eile;
+      final be = b.eile;
+      if (ae != be) return ae.compareTo(be);
+      return a.id.compareTo(b.id);
+    });
+    return list;
+  }
+
+  bool _isImageFileName(String? name) {
+    final n = (name ?? '').trim().toLowerCase();
+    if (n.isEmpty) return false;
+    return n.endsWith('.jpg') ||
+        n.endsWith('.jpeg') ||
+        n.endsWith('.png') ||
+        n.endsWith('.gif') ||
+        n.endsWith('.bmp') ||
+        n.endsWith('.webp') ||
+        n.endsWith('.avif') ||
+        n.endsWith('.heic') ||
+        n.endsWith('.heif') ||
+        n.endsWith('.tif') ||
+        n.endsWith('.tiff');
+  }
+
+  Future<bool> _hasPictureForZingsnis(int zingsnisId) async {
+    final cached = _failaiByZingsnisId[zingsnisId];
+    if (cached != null) {
+      return cached.any((f) => _isImageFileName(f.failoPav));
+    }
+
+    try {
+      final list = await Api.fetchPrisegtiFailaiByZingsnis(zingsnisId);
+      final items = list
+          .map((e) => PrisegtasFailas.fromJson(e as Map<String, dynamic>))
+          .toList();
+      if (mounted) {
+        setState(() => _failaiByZingsnisId[zingsnisId] = items);
+      }
+      return items.any((f) => _isImageFileName(f.failoPav));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool _isTestasIrasasFullyCompleted(TestasIrasas link) {
+    final templates = _templatesByTestasId[link.testasId] ?? const <ZingsnisTemplate>[];
+    if (templates.isEmpty) return true;
+    for (final tpl in templates) {
+      final z = _zingsniaiByKey[_k(link.id, tpl.id)];
+      if (z?.completedAt == null) return false;
+    }
+    return true;
+  }
+
+  String? _blockReasonForLink(TestasIrasas link) {
+    final sorted = _sortedLinks();
+    final idx = sorted.indexWhere((l) => l.id == link.id);
+    if (idx <= 0) return null;
+
+    for (var i = 0; i < idx; i++) {
+      final prev = sorted[i];
+      if (!_isTestasIrasasFullyCompleted(prev)) {
+        final prevName = _testaiById[prev.testasId]?.testotekstas ??
+            'Testas #${prev.testasId}';
+        return 'Pirma užbaikite ankstesnį testą ir jo žingsnius: $prevName';
+      }
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -104,7 +177,13 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
       final allLinks = (results[0])
           .map((e) => TestasIrasas.fromJson(e as Map<String, dynamic>))
           .toList();
-      final links = allLinks.where((e) => e.irasasId == widget.irasas.id).toList();
+      final links = allLinks.where((e) => e.irasasId == widget.irasas.id).toList()
+        ..sort((a, b) {
+          final ae = a.eile;
+          final be = b.eile;
+          if (ae != be) return ae.compareTo(be);
+          return a.id.compareTo(b.id);
+        });
 
       final tests = (results[1])
           .map((e) => Testas.fromJson(e as Map<String, dynamic>))
@@ -164,6 +243,13 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
     required TestasIrasas link,
     required ZingsnisTemplate template,
   }) async {
+    final blockReason = _blockReasonForLink(link);
+    if (blockReason != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(blockReason)));
+      return;
+    }
+
     final key = _k(link.id, template.id);
     final draft = _drafts[key];
     if (draft == null) return;
@@ -181,6 +267,29 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
     final draftKomentaras = normKomentaras(komentaras);
     final existingCompleted = existing?.completedAt != null;
     final draftCompleted = draft.completed;
+
+    if (draftCompleted) {
+      final hasComment = draftKomentaras.isNotEmpty;
+
+      var hasPicture = false;
+      if (!hasComment) {
+        final zId = existing?.id;
+        if (zId != null) {
+          hasPicture = await _hasPictureForZingsnis(zId);
+        }
+      }
+
+      if (!hasComment && !hasPicture) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Norint pažymėti pabaigtą, reikia komentaro arba nuotraukos (prisegto paveikslėlio).',
+            ),
+          ),
+        );
+        return;
+      }
+    }
 
     final isNoOp = existing != null &&
         existingKomentaras == draftKomentaras &&
@@ -378,6 +487,7 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
 
   @override
   Widget build(BuildContext context) {
+    final sortedLinks = _sortedLinks();
     return AppScaffold(
       title: 'Žingsniai: ${widget.irasas.pavadinimas}',
       actions: [
@@ -402,11 +512,13 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                         ),
                       )
                     : ListView.separated(
-                        itemCount: _links.length,
+                        itemCount: sortedLinks.length,
                       separatorBuilder: (context, index) =>
                         const SizedBox(height: 12),
                         itemBuilder: (ctx, i) {
-                          final link = _links[i];
+                          final link = sortedLinks[i];
+                          final blockReason = _blockReasonForLink(link);
+                          final locked = blockReason != null;
                           final testas = _testaiById[link.testasId];
                           final templates = _templatesByTestasId[link.testasId] ??
                               const <ZingsnisTemplate>[];
@@ -424,6 +536,19 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
+                                  if (locked)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Text(
+                                        blockReason,
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .error,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
                                   const SizedBox(height: 8),
                                   if (templates.isEmpty)
                                     Text(
@@ -543,6 +668,7 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                               const SizedBox(height: 10),
                                               TextField(
                                                 controller: draft.komentarasCtrl,
+                                                enabled: !locked,
                                                 decoration: const InputDecoration(
                                                   labelText: 'Komentaras',
                                                 ),
@@ -555,10 +681,13 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                   Expanded(
                                                     child: CheckboxListTile(
                                                       value: draft.completed,
-                                                      onChanged: (v) => setState(
-                                                        () => draft.completed =
-                                                            (v ?? false),
-                                                      ),
+                                                      onChanged: locked
+                                                          ? null
+                                                          : (v) => setState(
+                                                                () =>
+                                                                    draft.completed =
+                                                                        (v ?? false),
+                                                              ),
                                                       controlAffinity:
                                                           ListTileControlAffinity
                                                               .leading,
@@ -569,10 +698,12 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                     ),
                                                   ),
                                                   FilledButton.icon(
-                                                    onPressed: () => _saveStep(
-                                                      link: link,
-                                                      template: tpl,
-                                                    ),
+                                                    onPressed: locked
+                                                        ? null
+                                                        : () => _saveStep(
+                                                              link: link,
+                                                              template: tpl,
+                                                            ),
                                                     icon: const Icon(Icons.save),
                                                     label:
                                                         const Text('Išsaugoti'),
@@ -593,7 +724,9 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                     ),
                                                   ),
                                                   FilledButton.icon(
-                                                    onPressed: zingsnisId == null
+                                                    onPressed: locked
+                                                        ? null
+                                                        : zingsnisId == null
                                                         ? () {
                                                             ScaffoldMessenger.of(
                                                               context,
@@ -651,11 +784,13 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                             ),
                                                             IconButton(
                                                               tooltip: 'Pašalinti',
-                                                              onPressed: () =>
-                                                                  _deleteFailas(
-                                                                zingsnisId,
-                                                                f,
-                                                              ),
+                                                              onPressed: locked
+                                                                  ? null
+                                                                  : () =>
+                                                                      _deleteFailas(
+                                                                    zingsnisId,
+                                                                    f,
+                                                                  ),
                                                               icon: const Icon(
                                                                 Icons
                                                                     .delete_outline,

@@ -1,10 +1,13 @@
 using System.Collections.Generic;
+using System;
+using System.IO;
 using System.Threading.Tasks;
 using Backend.Data;
 using Backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using System.Linq;
 
 namespace Backend.Controllers
 {
@@ -15,6 +18,91 @@ namespace Backend.Controllers
     {
         private readonly AppDbContext _db;
         public ZingsnisController(AppDbContext db) => _db = db;
+
+        private static string NormalizeKomentaras(string? s)
+        {
+            var t = (s ?? string.Empty).Trim();
+            if (t == "-") return string.Empty;
+            return t;
+        }
+
+        private static bool IsImageFileName(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return false;
+            var ext = Path.GetExtension(name).ToLowerInvariant();
+            return ext is ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".avif" or ".heic" or ".heif" or ".tif" or ".tiff";
+        }
+
+        private async Task<bool> IsTestasIrasasFullyCompletedAsync(TestasIrasas link)
+        {
+            var templateIds = await _db.ZingsnisTemplate
+                .AsNoTracking()
+                .Where(t => t.TestasId == link.Testasid)
+                .Select(t => t.Id)
+                .ToListAsync();
+
+            if (templateIds.Count == 0) return true;
+
+            var completedTemplateIds = await _db.Zingsniai
+                .AsNoTracking()
+                .Where(z => z.TestasIrasasId == link.Id && z.CompletedAt != null)
+                .Select(z => z.ZingsnisTemplateId)
+                .Distinct()
+                .ToListAsync();
+
+            var completedSet = completedTemplateIds.ToHashSet();
+            foreach (var tplId in templateIds)
+            {
+                if (!completedSet.Contains(tplId)) return false;
+            }
+
+            return true;
+        }
+
+        private async Task<string?> ValidateCompletionRulesAsync(Zingsnis zingsnis)
+        {
+            if (zingsnis.CompletedAt == null) return null;
+
+            var currentLink = await _db.TestasIrasai
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == zingsnis.TestasIrasasId);
+            if (currentLink == null)
+            {
+                return "Nerastas testas/įrašas ryšys (testasIrasas).";
+            }
+
+            var prevLinks = await _db.TestasIrasai
+                .AsNoTracking()
+                .Where(t => t.Irasasid == currentLink.Irasasid && t.Eile < currentLink.Eile)
+                .OrderBy(t => t.Eile)
+                .ToListAsync();
+
+            foreach (var prev in prevLinks)
+            {
+                if (!await IsTestasIrasasFullyCompletedAsync(prev))
+                {
+                    return "Negalima užbaigti šio žingsnio, kol neužbaigtas ankstesnis testas ir visi jo žingsniai.";
+                }
+            }
+
+            var komentaras = NormalizeKomentaras(zingsnis.Komentaras);
+            if (string.IsNullOrWhiteSpace(komentaras))
+            {
+                var fileNames = await _db.PrisegtiFailai
+                    .AsNoTracking()
+                    .Where(p => p.ZingsnisId == zingsnis.Id)
+                    .Select(p => p.FailoPav)
+                    .ToListAsync();
+
+                var hasImage = fileNames.Any(IsImageFileName);
+                if (!hasImage)
+                {
+                    return "Norint užbaigti žingsnį, reikalingas komentaras arba nuotrauka.";
+                }
+            }
+
+            return null;
+        }
 
         private static DateTime EnsureUtc(DateTime dt)
         {
@@ -51,6 +139,13 @@ namespace Backend.Controllers
         public async Task<ActionResult<Zingsnis>> Create(Zingsnis zingsnis)
         {
             if (zingsnis.CompletedAt == null) zingsnis.Pabaigtas = false; else zingsnis.Pabaigtas = true;
+
+            var createValidation = await ValidateCompletionRulesAsync(zingsnis);
+            if (createValidation != null)
+            {
+                return BadRequest(createValidation);
+            }
+
             _db.Zingsniai.Add(zingsnis);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(Get), new { id = zingsnis.Id }, zingsnis);
@@ -75,6 +170,17 @@ namespace Backend.Controllers
             else
             {
                 zingsnis.Pabaigtas = true;
+            }
+
+            if (zingsnis.CompletedAt != null)
+            {
+                zingsnis.CompletedAt = EnsureUtc(zingsnis.CompletedAt.Value);
+            }
+
+            var validationError = await ValidateCompletionRulesAsync(zingsnis);
+            if (validationError != null)
+            {
+                return BadRequest(validationError);
             }
 
             _db.Entry(zingsnis).State = EntityState.Modified;

@@ -45,6 +45,7 @@ namespace Backend.Controllers
         {
             irasas.Pradzia = EnsureUtc(DateTime.UtcNow);
             irasas.Pabaiga = null;
+            irasas.Statusas = "Nepradėtas";
             _db.Irasai.Add(irasas);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(Get), new { id = irasas.Id }, irasas);
