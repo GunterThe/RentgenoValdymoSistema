@@ -20,12 +20,30 @@ namespace Backend.Data
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
         public DbSet<Zingsnis> Zingsniai { get; set; } = null!;
         public DbSet<ZingsnisTemplate> ZingsnisTemplate { get; set; } = null!;
+        public DbSet<Lokacija> Lokacijos { get; set; } = null!;
+        public DbSet<Sablonas> Sablonai { get; set; } = null!;
+        public DbSet<SablonasTestas> SablonasTestai { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.HasPostgresEnum<TestoTipas>();
+
+            modelBuilder.Entity<SablonasTestas>()
+                .HasKey(st => new { st.Sablonasid, st.Testasid });
+            
+            modelBuilder.Entity<SablonasTestas>()
+                .HasOne(st => st.Sablonas)
+                .WithMany(s => s.Testai)
+                .HasForeignKey(st => st.Sablonasid)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            modelBuilder.Entity<SablonasTestas>()
+                .HasOne(st => st.Testas)
+                .WithMany(t => t.Sablonai)
+                .HasForeignKey(st => st.Testasid)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Testas>()
                 .Property(t => t.Tipas)
@@ -70,6 +88,12 @@ namespace Backend.Data
                     .HasColumnType("public.testotipas") 
                     .HasConversion<string>();
             });
+
+            modelBuilder.Entity<Irasas>()
+                .HasOne(i => i.Lokacija)
+                .WithMany()
+                .HasForeignKey(i => i.LokacijaId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

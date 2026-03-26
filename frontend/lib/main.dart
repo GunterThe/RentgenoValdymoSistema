@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'pages/irasai_page.dart';
+import 'pages/lokacijos_page.dart';
+import 'pages/sablonai_page.dart';
 import 'pages/testai_page.dart';
 import 'pages/login_page.dart';
 import 'services/auth_service.dart';
@@ -93,14 +95,16 @@ class MyApp extends StatelessWidget {
             ? const MainPage()
             : const LoginPage(),
         '/': (_) => const AuthGuard(protectedRoute: '/', child: MainPage()),
-        '/irasai': (_) => const AuthGuard(
-              protectedRoute: '/irasai',
-              child: IrasaiPage(),
-            ),
-        '/testai': (_) => const AuthGuard(
-              protectedRoute: '/testai',
-              child: TestaiPage(),
-            ),
+        '/irasai': (_) =>
+            const AuthGuard(protectedRoute: '/irasai', child: IrasaiPage()),
+        '/testai': (_) =>
+            const AuthGuard(protectedRoute: '/testai', child: TestaiPage()),
+        '/lokacijos': (_) => const AuthGuard(
+          protectedRoute: '/lokacijos',
+          child: LokacijosPage(),
+        ),
+        '/sablonai': (_) =>
+            const AuthGuard(protectedRoute: '/sablonai', child: SablonaiPage()),
       },
     );
   }
@@ -109,7 +113,7 @@ class MyApp extends StatelessWidget {
 class MainPage extends StatelessWidget {
   const MainPage({super.key});
 
-  Widget _actionTile({
+  Widget _ActionTile({
     required BuildContext context,
     required IconData icon,
     required String title,
@@ -164,7 +168,6 @@ class MainPage extends StatelessWidget {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -189,8 +192,10 @@ class MainPage extends StatelessWidget {
                       color: cs.primary,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Icon(Icons.medical_information_outlined,
-                        color: cs.onPrimary),
+                    child: Icon(
+                      Icons.medical_information_outlined,
+                      color: cs.onPrimary,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
@@ -220,7 +225,7 @@ class MainPage extends StatelessWidget {
             Card(
               child: Column(
                 children: [
-                  _actionTile(
+                  _ActionTile(
                     context: context,
                     icon: Icons.article_outlined,
                     title: 'Peržiūrėti įrašus',
@@ -228,7 +233,7 @@ class MainPage extends StatelessWidget {
                     onTap: () => Navigator.of(context).pushNamed('/irasai'),
                   ),
                   const Divider(height: 1),
-                  _actionTile(
+                  _ActionTile(
                     context: context,
                     icon: Icons.science_outlined,
                     title: 'Peržiūrėti testus',
@@ -251,18 +256,19 @@ class MainPage extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => showPlaceholder(context, 'Supakavimas'),
-                    icon: const Icon(Icons.inventory_2_outlined),
-                    label: const Text('Supakavimas'),
+                    onPressed: () =>
+                        Navigator.of(context).pushNamed('/lokacijos'),
+                    icon: const Icon(Icons.place_outlined),
+                    label: const Text('Lokacijos'),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
-              onPressed: () => showPlaceholder(context, 'Išvežimas'),
-              icon: const Icon(Icons.local_shipping_outlined),
-              label: const Text('Išvežimas'),
+              onPressed: () => Navigator.of(context).pushNamed('/sablonai'),
+              icon: const Icon(Icons.layers_outlined),
+              label: const Text('Šablonai'),
             ),
           ],
         ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/api.dart';
 import '../models/irasas.dart';
+import '../models/lokacija.dart';
+import '../models/sablonas.dart';
 import '../models/testas.dart';
 import '../models/testas_irasas.dart';
 import 'irasas_zingsniai_page.dart';
@@ -19,6 +21,30 @@ class _IrasaiPageState extends State<IrasaiPage> {
   String _query = '';
   int? _sortColumnIndex;
   bool _sortAscending = true;
+  final Set<String> _statusFilters = <String>{};
+  final Map<int, String> _lokacijaNameById = {};
+
+  String _statusCategory(String raw) {
+    final s = raw.trim().toLowerCase();
+    if (s.isEmpty) return 'kita';
+    if (s.startsWith('neprad')) return 'nepradetas';
+    if (s.startsWith('pabaig')) return 'pabaigtas';
+    if (s.startsWith('ant ')) return 'ant';
+    return 'kita';
+  }
+
+  String _prettyStatus(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return '';
+    final cat = _statusCategory(t);
+    if (cat == 'nepradetas') return 'Nepradėtas';
+    if (cat == 'pabaigtas') return 'Pabaigtas';
+    if (cat == 'ant') {
+      // Keep details, just capitalize the first word.
+      return 'Ant${t.length > 3 ? t.substring(3) : ''}';
+    }
+    return t;
+  }
 
   @override
   void initState() {
@@ -29,10 +55,31 @@ class _IrasaiPageState extends State<IrasaiPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final list = await Api.fetchIrasai();
-      _items = list
+      final results = await Future.wait([
+        Api.fetchIrasai(),
+        Api.fetchLokacijos(),
+      ]);
+
+      final list = results[0];
+      final locList = results[1];
+
+      final items = list
           .map((e) => Irasas.fromJson(e as Map<String, dynamic>))
           .toList();
+
+      final locs = locList
+          .map((e) => Lokacija.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      final locMap = <int, String>{for (final l in locs) l.id: l.pavadinimas};
+
+      if (!mounted) return;
+      setState(() {
+        _items = items;
+        _lokacijaNameById
+          ..clear()
+          ..addAll(locMap);
+      });
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -40,6 +87,12 @@ class _IrasaiPageState extends State<IrasaiPage> {
     } finally {
       setState(() => _loading = false);
     }
+  }
+
+  String _lokacijaName(int lokacijaId) {
+    final name = (_lokacijaNameById[lokacijaId] ?? '').trim();
+    if (name.isNotEmpty) return name;
+    return lokacijaId > 0 ? 'Lokacija #$lokacijaId' : '-';
   }
 
   String _fmtDate(DateTime? dt) {
@@ -65,12 +118,20 @@ class _IrasaiPageState extends State<IrasaiPage> {
                 : _items.where((e) => e.pavadinimas.toLowerCase().contains(q)))
             .toList();
 
+    final filters = _statusFilters;
+    final filtered = filters.isEmpty
+        ? list
+        : list.where((e) {
+            final cat = _statusCategory(e.statusas);
+            return filters.contains(cat);
+          }).toList();
+
     final col = _sortColumnIndex;
-    if (col == null) return list;
+    if (col == null) return filtered;
 
     int cmp(String a, String b) => a.toLowerCase().compareTo(b.toLowerCase());
 
-    list.sort((a, b) {
+    filtered.sort((a, b) {
       int r;
       switch (col) {
         case 0:
@@ -80,9 +141,15 @@ class _IrasaiPageState extends State<IrasaiPage> {
           r = cmp(a.idDokumento, b.idDokumento);
           break;
         case 2:
-          r = a.pradzia.compareTo(b.pradzia);
+          r = cmp(_lokacijaName(a.lokacijaId), _lokacijaName(b.lokacijaId));
           break;
         case 3:
+          r = cmp(a.statusas, b.statusas);
+          break;
+        case 4:
+          r = a.pradzia.compareTo(b.pradzia);
+          break;
+        case 5:
           r = _compareNullableDate(a.pabaiga, b.pabaiga);
           break;
         default:
@@ -90,7 +157,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
       }
       return _sortAscending ? r : -r;
     });
-    return list;
+    return filtered;
   }
 
   Future<void> _editIrasas(Irasas it) async {
@@ -130,7 +197,11 @@ class _IrasaiPageState extends State<IrasaiPage> {
                         );
                         if (picked == null) return;
                         setLocal(() {
-                          pradzia = DateTime(picked.year, picked.month, picked.day);
+                          pradzia = DateTime(
+                            picked.year,
+                            picked.month,
+                            picked.day,
+                          );
                         });
                       },
                       child: Text('Pradžia: ${_fmtDate(pradzia)}'),
@@ -148,7 +219,11 @@ class _IrasaiPageState extends State<IrasaiPage> {
                         );
                         if (picked == null) return;
                         setLocal(() {
-                          pabaiga = DateTime(picked.year, picked.month, picked.day);
+                          pabaiga = DateTime(
+                            picked.year,
+                            picked.month,
+                            picked.day,
+                          );
                         });
                       },
                       child: Text('Pabaiga: ${_fmtDate(pabaiga)}'),
@@ -191,13 +266,14 @@ class _IrasaiPageState extends State<IrasaiPage> {
         it.pradzia = pradzia;
         it.pabaiga = pabaiga;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Įrašas išsaugotas')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Įrašas išsaugotas')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Klaida: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Klaida: $e')));
     }
   }
 
@@ -206,6 +282,52 @@ class _IrasaiPageState extends State<IrasaiPage> {
     final pavCtrl = TextEditingController();
     var pradzia = DateTime.now();
     DateTime? pabaiga;
+
+    List<Lokacija> lokacijos = const <Lokacija>[];
+    List<Sablonas> sablonai = const <Sablonas>[];
+    try {
+      final results = await Future.wait([
+        Api.fetchLokacijos(),
+        Api.fetchSablonai(),
+      ]);
+      final list = results[0];
+      final sablList = results[1];
+
+      lokacijos = list
+          .map((e) => Lokacija.fromJson(e as Map<String, dynamic>))
+          .toList();
+      lokacijos.sort(
+        (a, b) =>
+            a.pavadinimas.toLowerCase().compareTo(b.pavadinimas.toLowerCase()),
+      );
+
+      sablonai = sablList
+          .map((e) => Sablonas.fromJson(e as Map<String, dynamic>))
+          .toList();
+      sablonai.sort(
+        (a, b) =>
+            a.pavadinimas.toLowerCase().compareTo(b.pavadinimas.toLowerCase()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Klaida kraunant lokacijas: $e')));
+      return;
+    }
+
+    if (lokacijos.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nėra lokacijų. Pirma sukurkite lokaciją.'),
+        ),
+      );
+      return;
+    }
+
+    int? lokacijaId = lokacijos.first.id;
+    int? sablonasId;
 
     final ok = await showDialog<bool?>(
       context: context,
@@ -225,6 +347,37 @@ class _IrasaiPageState extends State<IrasaiPage> {
                 decoration: const InputDecoration(labelText: 'Dokumento ID'),
               ),
               const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                value: lokacijaId,
+                decoration: const InputDecoration(labelText: 'Lokacija'),
+                items: lokacijos
+                    .map(
+                      (l) => DropdownMenuItem(
+                        value: l.id,
+                        child: Text(l.pavadinimas),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setLocal(() => lokacijaId = v),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int?>(
+                value: sablonasId,
+                decoration: const InputDecoration(
+                  labelText: 'Šablonas (nebūtina)',
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(value: null, child: Text('-')),
+                  ...sablonai.map(
+                    (s) => DropdownMenuItem<int?>(
+                      value: s.id,
+                      child: Text(s.pavadinimas),
+                    ),
+                  ),
+                ],
+                onChanged: (v) => setLocal(() => sablonasId = v),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -238,7 +391,11 @@ class _IrasaiPageState extends State<IrasaiPage> {
                         );
                         if (picked == null) return;
                         setLocal(() {
-                          pradzia = DateTime(picked.year, picked.month, picked.day);
+                          pradzia = DateTime(
+                            picked.year,
+                            picked.month,
+                            picked.day,
+                          );
                         });
                       },
                       child: Text('Pradžia: ${_fmtDate(pradzia)}'),
@@ -256,7 +413,11 @@ class _IrasaiPageState extends State<IrasaiPage> {
                         );
                         if (picked == null) return;
                         setLocal(() {
-                          pabaiga = DateTime(picked.year, picked.month, picked.day);
+                          pabaiga = DateTime(
+                            picked.year,
+                            picked.month,
+                            picked.day,
+                          );
                         });
                       },
                       child: Text('Pabaiga: ${_fmtDate(pabaiga)}'),
@@ -287,12 +448,19 @@ class _IrasaiPageState extends State<IrasaiPage> {
       'idDokumento': idDocCtrl.text.trim(),
       'pradzia': pradzia.toUtc().toIso8601String(),
       'pabaiga': pabaiga == null ? null : pabaiga!.toUtc().toIso8601String(),
+      'lokacijaId': lokacijaId,
+      'sablonasId': sablonasId,
     };
 
     if ((payload['pavadinimas'] as String).isEmpty ||
-        (payload['idDokumento'] as String).isEmpty) {
+        (payload['idDokumento'] as String).isEmpty ||
+        (payload['lokacijaId'] as int?) == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Užpildykite pavadinimą ir dokumento ID')),
+        const SnackBar(
+          content: Text(
+            'Užpildykite pavadinimą, dokumento ID ir pasirinkite lokaciją',
+          ),
+        ),
       );
       return;
     }
@@ -302,13 +470,14 @@ class _IrasaiPageState extends State<IrasaiPage> {
       final it = Irasas.fromJson(created);
       if (!mounted) return;
       setState(() => _items.add(it));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Įrašas sukurtas')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Įrašas sukurtas')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Klaida: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Klaida: $e')));
     }
   }
 
@@ -319,10 +488,10 @@ class _IrasaiPageState extends State<IrasaiPage> {
         Api.fetchTestasIrasai(),
       ]);
 
-        final testai = (results[0])
+      final testai = (results[0])
           .map((e) => Testas.fromJson(e as Map<String, dynamic>))
           .toList();
-        final links = (results[1])
+      final links = (results[1])
           .map((e) => TestasIrasas.fromJson(e as Map<String, dynamic>))
           .where((l) => l.irasasId == it.id)
           .toList();
@@ -380,13 +549,14 @@ class _IrasaiPageState extends State<IrasaiPage> {
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Testas pridėtas')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Testas pridėtas')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Klaida: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Klaida: $e')));
     }
   }
 
@@ -406,7 +576,9 @@ class _IrasaiPageState extends State<IrasaiPage> {
           .toList();
 
       final linkedTestIds = links.map((e) => e.testasId).toSet();
-      final linkedTests = testai.where((t) => linkedTestIds.contains(t.id)).toList();
+      final linkedTests = testai
+          .where((t) => linkedTestIds.contains(t.id))
+          .toList();
 
       if (linkedTests.isEmpty) {
         if (!mounted) return;
@@ -460,13 +632,14 @@ class _IrasaiPageState extends State<IrasaiPage> {
 
       await Api.deleteTestasIrasasById(link.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Testas pašalintas')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Testas pašalintas')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Klaida: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Klaida: $e')));
     }
   }
 
@@ -495,8 +668,9 @@ class _IrasaiPageState extends State<IrasaiPage> {
       await _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Klaida trynimo metu: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Klaida trynimo metu: $e')));
     }
   }
 
@@ -524,12 +698,74 @@ class _IrasaiPageState extends State<IrasaiPage> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                 child: Column(
                   children: [
-                    TextField(
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search),
-                        labelText: 'Paieška pagal pavadinimą',
-                      ),
-                      onChanged: (v) => setState(() => _query = v),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.search),
+                              labelText: 'Paieška pagal pavadinimą',
+                            ),
+                            onChanged: (v) => setState(() => _query = v),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.filter_list_outlined,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                              FilterChip(
+                                label: const Text('Nepradėtas'),
+                                selected: _statusFilters.contains('nepradetas'),
+                                onSelected: (v) => setState(() {
+                                  if (v) {
+                                    _statusFilters.add('nepradetas');
+                                  } else {
+                                    _statusFilters.remove('nepradetas');
+                                  }
+                                }),
+                              ),
+                              FilterChip(
+                                label: const Text('Ant'),
+                                selected: _statusFilters.contains('ant'),
+                                onSelected: (v) => setState(() {
+                                  if (v) {
+                                    _statusFilters.add('ant');
+                                  } else {
+                                    _statusFilters.remove('ant');
+                                  }
+                                }),
+                              ),
+                              FilterChip(
+                                label: const Text('Pabaigtas'),
+                                selected: _statusFilters.contains('pabaigtas'),
+                                onSelected: (v) => setState(() {
+                                  if (v) {
+                                    _statusFilters.add('pabaigtas');
+                                  } else {
+                                    _statusFilters.remove('pabaigtas');
+                                  }
+                                }),
+                              ),
+                              if (_statusFilters.isNotEmpty)
+                                TextButton(
+                                  onPressed: () => setState(() {
+                                    _statusFilters.clear();
+                                  }),
+                                  child: const Text('Valyti'),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     Expanded(
@@ -569,6 +805,20 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                           }),
                                         ),
                                         DataColumn(
+                                          label: const Text('Lokacija'),
+                                          onSort: (i, asc) => setState(() {
+                                            _sortColumnIndex = i;
+                                            _sortAscending = asc;
+                                          }),
+                                        ),
+                                        DataColumn(
+                                          label: const Text('Statusas'),
+                                          onSort: (i, asc) => setState(() {
+                                            _sortColumnIndex = i;
+                                            _sortAscending = asc;
+                                          }),
+                                        ),
+                                        DataColumn(
                                           label: const Text('Pradžia'),
                                           onSort: (i, asc) => setState(() {
                                             _sortColumnIndex = i;
@@ -592,49 +842,89 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                             DataCell(Text(it.pavadinimas)),
                                             DataCell(Text(it.idDokumento)),
                                             DataCell(
+                                              Text(
+                                                _lokacijaName(it.lokacijaId),
+                                              ),
+                                            ),
+                                            DataCell(
+                                              Text(_prettyStatus(it.statusas)),
+                                            ),
+                                            DataCell(
                                               Text(_fmtDate(it.pradzia)),
                                             ),
                                             DataCell(
                                               Text(_fmtDate(it.pabaiga)),
                                             ),
-                                            DataCell(Row(
-                                              children: [
-                                                IconButton(
-                                                  tooltip: 'Peržiūrėti',
-                                                  onPressed: () => showPlaceholder(context, 'Peržiūrėti įrašą'),
-                                                  icon: const Icon(Icons.remove_red_eye_outlined),
-                                                ),
-                                                IconButton(
-                                                  tooltip: 'Redaguoti',
-                                                  onPressed: () => _editIrasas(it),
-                                                  icon: const Icon(Icons.edit),
-                                                ),
-                                                IconButton(
-                                                  tooltip: 'Pridėti testą',
-                                                  onPressed: () => _addTestToIrasas(it),
-                                                  icon: const Icon(Icons.playlist_add),
-                                                ),
-                                                IconButton(
-                                                  tooltip: 'Pašalinti testą',
-                                                  onPressed: () => _removeTestFromIrasas(it),
-                                                  icon: const Icon(Icons.playlist_remove),
-                                                ),
-                                                IconButton(
-                                                  tooltip: 'Žingsniai',
-                                                  onPressed: () => Navigator.of(context).push(
-                                                    MaterialPageRoute(
-                                                      builder: (_) => IrasasZingsniaiPage(irasas: it),
+                                            DataCell(
+                                              Row(
+                                                children: [
+                                                  IconButton(
+                                                    tooltip: 'Peržiūrėti',
+                                                    onPressed: () =>
+                                                        showPlaceholder(
+                                                          context,
+                                                          'Peržiūrėti įrašą',
+                                                        ),
+                                                    icon: const Icon(
+                                                      Icons
+                                                          .remove_red_eye_outlined,
                                                     ),
                                                   ),
-                                                  icon: const Icon(Icons.format_list_numbered),
-                                                ),
-                                                IconButton(
-                                                  tooltip: 'Ištrinti',
-                                                  onPressed: () => _deleteIrasas(it),
-                                                  icon: const Icon(Icons.delete_outline),
-                                                ),
-                                              ],
-                                            )),
+                                                  IconButton(
+                                                    tooltip: 'Redaguoti',
+                                                    onPressed: () =>
+                                                        _editIrasas(it),
+                                                    icon: const Icon(
+                                                      Icons.edit,
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    tooltip: 'Pridėti testą',
+                                                    onPressed: () =>
+                                                        _addTestToIrasas(it),
+                                                    icon: const Icon(
+                                                      Icons.playlist_add,
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    tooltip: 'Pašalinti testą',
+                                                    onPressed: () =>
+                                                        _removeTestFromIrasas(
+                                                          it,
+                                                        ),
+                                                    icon: const Icon(
+                                                      Icons.playlist_remove,
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    tooltip: 'Žingsniai',
+                                                    onPressed: () =>
+                                                        Navigator.of(
+                                                          context,
+                                                        ).push(
+                                                          MaterialPageRoute(
+                                                            builder: (_) =>
+                                                                IrasasZingsniaiPage(
+                                                                  irasas: it,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                    icon: const Icon(
+                                                      Icons
+                                                          .format_list_numbered,
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    tooltip: 'Ištrinti',
+                                                    onPressed: () =>
+                                                        _deleteIrasas(it),
+                                                    icon: const Icon(
+                                                      Icons.delete_outline,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ],
                                         );
                                       }).toList(),

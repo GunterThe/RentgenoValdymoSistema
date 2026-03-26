@@ -21,5 +21,7 @@ namespace Backend.Models
 
         [JsonIgnore]
         public ICollection<TestasIrasas> Irasai { get; set; } = new List<TestasIrasas>();
+        [JsonIgnore]
+        public ICollection<SablonasTestas> Sablonai { get; set; } = new List<SablonasTestas>();
     }
 }

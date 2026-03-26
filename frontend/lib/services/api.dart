@@ -53,6 +53,7 @@ class Api {
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
+
   // Irašai
   static Future<List<dynamic>> fetchIrasai() async {
     final res = await _requestWithRefresh(
@@ -148,6 +149,148 @@ class Api {
     return jsonDecode(res.body) as List<dynamic>;
   }
 
+  // Lokacija
+  static Future<List<dynamic>> fetchLokacijos() async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(Uri.parse('$baseUrl/api/lokacija'), headers: h),
+    );
+    if (res.statusCode != 200) throw Exception('Failed to load lokacijos');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createLokacija(
+    Map<String, dynamic> payload,
+  ) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(
+        Uri.parse('$baseUrl/api/lokacija'),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create lokacija');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateLokacija(
+    int id,
+    Map<String, dynamic> payload,
+  ) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(
+        Uri.parse('$baseUrl/api/lokacija/$id'),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update lokacija');
+  }
+
+  static Future<void> deleteLokacija(int id) async {
+    final res = await _requestWithRefresh(
+      (h) => http.delete(Uri.parse('$baseUrl/api/lokacija/$id'), headers: h),
+    );
+    if (res.statusCode != 204) {
+      throw Exception(
+        'Failed to delete lokacija (${res.statusCode}): ${res.body}',
+      );
+    }
+  }
+
+  // Sablonas
+  static Future<List<dynamic>> fetchSablonai() async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(Uri.parse('$baseUrl/api/sablonas'), headers: h),
+    );
+    if (res.statusCode != 200) throw Exception('Failed to load sablonai');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createSablonas(
+    Map<String, dynamic> payload,
+  ) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(
+        Uri.parse('$baseUrl/api/sablonas'),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create sablonas');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateSablonas(
+    int id,
+    Map<String, dynamic> payload,
+  ) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(
+        Uri.parse('$baseUrl/api/sablonas/$id'),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update sablonas');
+  }
+
+  static Future<void> deleteSablonas(int id) async {
+    final res = await _requestWithRefresh(
+      (h) => http.delete(Uri.parse('$baseUrl/api/sablonas/$id'), headers: h),
+    );
+    if (res.statusCode != 204) {
+      throw Exception(
+        'Failed to delete sablonas (${res.statusCode}): ${res.body}',
+      );
+    }
+  }
+
+  // SablonasTestas (ryšys)
+  static Future<List<dynamic>> fetchSablonasTestai() async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(Uri.parse('$baseUrl/api/sablonastestas'), headers: h),
+    );
+    if (res.statusCode != 200) throw Exception('Failed to load sablonastestai');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createSablonasTestas(
+    Map<String, dynamic> payload,
+  ) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(
+        Uri.parse('$baseUrl/api/sablonastestas'),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+    });
+    if (res.statusCode != 201) {
+      throw Exception(
+        'Failed to create sablonastestas (${res.statusCode}): ${res.body}',
+      );
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> deleteSablonasTestas(int sablonasId, int testasId) async {
+    final res = await _requestWithRefresh(
+      (h) => http.delete(
+        Uri.parse('$baseUrl/api/sablonastestas/$sablonasId/$testasId'),
+        headers: h,
+      ),
+    );
+    if (res.statusCode != 204) {
+      throw Exception(
+        'Failed to delete sablonastestas (${res.statusCode}): ${res.body}',
+      );
+    }
+  }
+
   static Future<Map<String, dynamic>> createTestasIrasas(
     Map<String, dynamic> payload,
   ) async {
@@ -191,10 +334,8 @@ class Api {
 
   static Future<void> deleteTestasIrasasById(int id) async {
     final res = await _requestWithRefresh(
-      (h) => http.delete(
-        Uri.parse('$baseUrl/api/testasirasas/$id'),
-        headers: h,
-      ),
+      (h) =>
+          http.delete(Uri.parse('$baseUrl/api/testasirasas/$id'), headers: h),
     );
     if (res.statusCode != 204) throw Exception('Failed to delete testasirasas');
   }
@@ -232,7 +373,11 @@ class Api {
         );
       } else if (filePath != null) {
         req.files.add(
-          await http.MultipartFile.fromPath('file', filePath, filename: fileName),
+          await http.MultipartFile.fromPath(
+            'file',
+            filePath,
+            filename: fileName,
+          ),
         );
       } else {
         throw ArgumentError('Either bytes or filePath must be provided');
@@ -264,10 +409,13 @@ class Api {
         headers: h,
       ),
     );
-    if (res.statusCode != 204) throw Exception('Failed to delete prisegtas failas');
+    if (res.statusCode != 204)
+      throw Exception('Failed to delete prisegtas failas');
   }
 
-  static Future<List<dynamic>> fetchPrisegtiFailaiByZingsnis(int zingsnisId) async {
+  static Future<List<dynamic>> fetchPrisegtiFailaiByZingsnis(
+    int zingsnisId,
+  ) async {
     final res = await _requestWithRefresh(
       (h) => http.get(
         Uri.parse('$baseUrl/api/prisegtasfailas/byZingsnis/$zingsnisId'),
@@ -299,7 +447,11 @@ class Api {
         );
       } else if (filePath != null) {
         req.files.add(
-          await http.MultipartFile.fromPath('file', filePath, filename: fileName),
+          await http.MultipartFile.fromPath(
+            'file',
+            filePath,
+            filename: fileName,
+          ),
         );
       } else {
         throw ArgumentError('Either bytes or filePath must be provided');
@@ -329,7 +481,8 @@ class Api {
     final res = await _requestWithRefresh(
       (h) => http.get(Uri.parse('$baseUrl/api/zingsnistemplate'), headers: h),
     );
-    if (res.statusCode != 200) throw Exception('Failed to load zingsnis templates');
+    if (res.statusCode != 200)
+      throw Exception('Failed to load zingsnis templates');
     return jsonDecode(res.body) as List<dynamic>;
   }
 
@@ -344,11 +497,15 @@ class Api {
         body: jsonEncode(payload),
       );
     });
-    if (res.statusCode != 201) throw Exception('Failed to create zingsnis template');
+    if (res.statusCode != 201)
+      throw Exception('Failed to create zingsnis template');
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  static Future<void> updateZingsnisTemplate(int id, Map<String, dynamic> payload) async {
+  static Future<void> updateZingsnisTemplate(
+    int id,
+    Map<String, dynamic> payload,
+  ) async {
     final res = await _requestWithRefresh((h) {
       final headers = {...h, 'Content-Type': 'application/json'};
       return http.put(
@@ -357,14 +514,19 @@ class Api {
         body: jsonEncode(payload),
       );
     });
-    if (res.statusCode != 204) throw Exception('Failed to update zingsnis template');
+    if (res.statusCode != 204)
+      throw Exception('Failed to update zingsnis template');
   }
 
   static Future<void> deleteZingsnisTemplate(int id) async {
     final res = await _requestWithRefresh(
-      (h) => http.delete(Uri.parse('$baseUrl/api/zingsnistemplate/$id'), headers: h),
+      (h) => http.delete(
+        Uri.parse('$baseUrl/api/zingsnistemplate/$id'),
+        headers: h,
+      ),
     );
-    if (res.statusCode != 204) throw Exception('Failed to delete zingsnis template');
+    if (res.statusCode != 204)
+      throw Exception('Failed to delete zingsnis template');
   }
 
   // Zingsnis (vykdymas)
@@ -391,7 +553,10 @@ class Api {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  static Future<void> updateZingsnis(int id, Map<String, dynamic> payload) async {
+  static Future<void> updateZingsnis(
+    int id,
+    Map<String, dynamic> payload,
+  ) async {
     final res = await _requestWithRefresh((h) {
       final headers = {...h, 'Content-Type': 'application/json'};
       return http.put(

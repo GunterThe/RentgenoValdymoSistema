@@ -28,9 +28,15 @@ namespace Backend.Models
         public DateTime? Pabaiga { get; set; }
         
         [Column("statusas")]
-        public string Statusas { get; set; } = null!;
+        public string? Statusas { get; set; }
+
+        [Column("lokacija_id")]
+        public int LokacijaId { get; set; }
 
         [JsonIgnore]
         public ICollection<TestasIrasas> Testai { get; set; } = new List<TestasIrasas>();
+        
+        [JsonIgnore]
+        public Lokacija? Lokacija { get; set; }
     }
 }

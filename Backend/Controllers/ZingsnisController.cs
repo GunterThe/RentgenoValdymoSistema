@@ -19,6 +19,10 @@ namespace Backend.Controllers
         private readonly AppDbContext _db;
         public ZingsnisController(AppDbContext db) => _db = db;
 
+        private const string StatusasNepradetas = "Nepradėtas";
+        private const string StatusasPabaigtas = "Pabaigtas";
+        private static string StatusasAnt(string testPav, int zingsnisEile) => $"Ant {testPav} testo {zingsnisEile} žingsnio";
+
         private static string NormalizeKomentaras(string? s)
         {
             var t = (s ?? string.Empty).Trim();
@@ -104,6 +108,93 @@ namespace Backend.Controllers
             return null;
         }
 
+        private sealed record TemplateLite(int Id, int Eile, int TestasId);
+
+        private async Task<(string statusas, bool finished)> ComputeIrasasStatusasAsync(int irasasId)
+        {
+            var links = await _db.TestasIrasai
+                .AsNoTracking()
+                .Where(t => t.Irasasid == irasasId)
+                .OrderBy(t => t.Eile)
+                .ToListAsync();
+
+            if (links.Count == 0)
+            {
+                return (StatusasNepradetas, false);
+            }
+
+            var linkIds = links.Select(l => l.Id).ToList();
+            var started = await _db.Zingsniai.AsNoTracking().AnyAsync(z => linkIds.Contains(z.TestasIrasasId));
+            if (!started)
+            {
+                return (StatusasNepradetas, false);
+            }
+
+            var testIds = links.Select(l => l.Testasid).Distinct().ToList();
+            var templates = await _db.ZingsnisTemplate
+                .AsNoTracking()
+                .Where(t => testIds.Contains(t.TestasId))
+                .Select(t => new TemplateLite(t.Id, t.Eile, t.TestasId))
+                .ToListAsync();
+
+            var templatesByTestId = templates
+                .GroupBy(t => t.TestasId)
+                .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Eile).ToList());
+
+            var zingsniai = await _db.Zingsniai
+                .AsNoTracking()
+                .Where(z => linkIds.Contains(z.TestasIrasasId))
+                .Select(z => new { z.TestasIrasasId, z.ZingsnisTemplateId, z.CompletedAt })
+                .ToListAsync();
+
+            var completedByKey = zingsniai
+                .ToDictionary(
+                    z => (z.TestasIrasasId, z.ZingsnisTemplateId),
+                    z => z.CompletedAt != null
+                );
+
+            foreach (var link in links)
+            {
+                if (!templatesByTestId.TryGetValue(link.Testasid, out var tpls) || tpls.Count == 0)
+                {
+                    // No templates for this test => nothing to do here.
+                    continue;
+                }
+
+                foreach (var tpl in tpls)
+                {
+                    var key = (link.Id, tpl.Id);
+                    var isCompleted = completedByKey.TryGetValue(key, out var v) && v;
+                    var testPav = await _db.Testai.AsNoTracking().Where(t => t.Id == link.Testasid).Select(t => t.Testotekstas).FirstOrDefaultAsync();
+                    if (!isCompleted && testPav != null)
+                    {
+                        return (StatusasAnt(testPav, tpl.Eile), false);
+                    }
+                }
+            }
+
+            return (StatusasPabaigtas, true);
+        }
+
+        private async Task UpdateIrasasProgressFieldsAsync(int irasasId)
+        {
+            var (statusas, finished) = await ComputeIrasasStatusasAsync(irasasId);
+            var current = await _db.Irasai.AsNoTracking().FirstOrDefaultAsync(i => i.Id == irasasId);
+            if (current == null) return;
+
+            DateTime? pabaiga = finished
+                ? (current.Pabaiga ?? DateTime.UtcNow)
+                : (DateTime?)null;
+
+            if (current.Statusas == statusas && current.Pabaiga == pabaiga) return;
+
+            var irasas = new Irasas { Id = irasasId, Statusas = statusas, Pabaiga = pabaiga };
+            _db.Irasai.Attach(irasas);
+            _db.Entry(irasas).Property(i => i.Statusas).IsModified = true;
+            _db.Entry(irasas).Property(i => i.Pabaiga).IsModified = true;
+            await _db.SaveChangesAsync();
+        }
+
         private static DateTime EnsureUtc(DateTime dt)
         {
             return dt.Kind switch
@@ -148,6 +239,13 @@ namespace Backend.Controllers
 
             _db.Zingsniai.Add(zingsnis);
             await _db.SaveChangesAsync();
+
+            var link = await _db.TestasIrasai.AsNoTracking().FirstOrDefaultAsync(t => t.Id == zingsnis.TestasIrasasId);
+            if (link != null)
+            {
+                await UpdateIrasasProgressFieldsAsync(link.Irasasid);
+            }
+
             return CreatedAtAction(nameof(Get), new { id = zingsnis.Id }, zingsnis);
         }
 
@@ -186,45 +284,11 @@ namespace Backend.Controllers
             _db.Entry(zingsnis).State = EntityState.Modified;
             await _db.SaveChangesAsync();
 
-            var template = await _db.ZingsnisTemplate.AsNoTracking().FirstOrDefaultAsync(t => t.Id == temp.ZingsnisTemplateId);
-            var testasIrasas = await _db.TestasIrasai.AsNoTracking().FirstOrDefaultAsync(t => t.Id == temp.TestasIrasasId);
-
-            bool areAllZingsniaiCompleted  = false;
-            bool isLastTestasInIrasas = false;
-
-            if (template != null && testasIrasas != null)
+            var link = await _db.TestasIrasai.AsNoTracking().FirstOrDefaultAsync(t => t.Id == temp.TestasIrasasId);
+            if (link != null)
             {
-                var zingsniai = await _db.Zingsniai
-                    .AsNoTracking()
-                    .Where(z => z.TestasIrasasId == temp.TestasIrasasId)
-                    .ToListAsync();
-                areAllZingsniaiCompleted = zingsniai.All(z => z.CompletedAt != null);
-
-                var maxTestEile = await _db.TestasIrasai.Where(t => t.Irasasid == testasIrasas.Irasasid).MaxAsync(t => t.Eile);
-                isLastTestasInIrasas = testasIrasas.Eile == maxTestEile;
+                await UpdateIrasasProgressFieldsAsync(link.Irasasid);
             }
-            if (testasIrasas != null && areAllZingsniaiCompleted && isLastTestasInIrasas)
-            {
-                Irasas? irasas = await _db.Irasai.AsNoTracking().FirstOrDefaultAsync(i => i.Id == testasIrasas.Irasasid);
-                if (irasas != null)
-                {
-                    irasas.Pabaiga = DateTime.UtcNow;
-                    _db.Irasai.Attach(irasas);
-                    _db.Entry(irasas).Property(i => i.Pabaiga).IsModified = true;
-                }
-            }
-            else if (testasIrasas != null && !areAllZingsniaiCompleted)
-            {
-                Irasas? irasas = await _db.Irasai.AsNoTracking().FirstOrDefaultAsync(i => i.Id == testasIrasas.Irasasid);
-                if (irasas != null)
-                {
-                    irasas.Pabaiga = null;
-                    _db.Irasai.Attach(irasas);
-                    _db.Entry(irasas).Property(i => i.Pabaiga).IsModified = true;
-                }
-            }
-
-            await _db.SaveChangesAsync();
             return NoContent();
         }
 
@@ -234,8 +298,16 @@ namespace Backend.Controllers
         {
             var item = await _db.Zingsniai.FindAsync(id);
             if (item == null) return NotFound();
+
+            var link = await _db.TestasIrasai.AsNoTracking().FirstOrDefaultAsync(t => t.Id == item.TestasIrasasId);
             _db.Zingsniai.Remove(item);
             await _db.SaveChangesAsync();
+
+            if (link != null)
+            {
+                await UpdateIrasasProgressFieldsAsync(link.Irasasid);
+            }
+
             return NoContent();
         }
     }
