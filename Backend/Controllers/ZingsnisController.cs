@@ -226,7 +226,6 @@ namespace Backend.Controllers
         }
 
         [HttpPost]
-        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<Zingsnis>> Create(Zingsnis zingsnis)
         {
             if (zingsnis.CompletedAt == null) zingsnis.Pabaigtas = false; else zingsnis.Pabaigtas = true;

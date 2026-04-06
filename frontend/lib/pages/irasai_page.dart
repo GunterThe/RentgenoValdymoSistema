@@ -5,6 +5,7 @@ import '../models/lokacija.dart';
 import '../models/sablonas.dart';
 import '../models/testas.dart';
 import '../models/testas_irasas.dart';
+import '../models/zingsnis.dart';
 import 'irasas_zingsniai_page.dart';
 import '../widgets/app_scaffold.dart';
 
@@ -23,6 +24,71 @@ class _IrasaiPageState extends State<IrasaiPage> {
   bool _sortAscending = true;
   final Set<String> _statusFilters = <String>{};
   final Map<int, String> _lokacijaNameById = {};
+  Map<int, String> _komentaraiByIrasasId = {};
+  bool _komentaraiLoaded = false;
+  bool _komentaraiLoading = false;
+
+  String _normalizeKomentaras(String? s) {
+    final t = (s ?? '').trim();
+    if (t == '-') return '';
+    return t;
+  }
+
+  Future<void> _ensureKomentaraiIndexLoaded() async {
+    if (_komentaraiLoaded || _komentaraiLoading) return;
+
+    if (mounted) {
+      setState(() => _komentaraiLoading = true);
+    }
+
+    try {
+      final results = await Future.wait([
+        Api.fetchTestasIrasai(),
+        Api.fetchZingsniai(),
+      ]);
+
+      final links = (results[0])
+          .map((e) => TestasIrasas.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      final irasasIdByLinkId = <int, int>{
+        for (final l in links) l.id: l.irasasId,
+      };
+
+      final zingsniai = (results[1])
+          .map((e) => Zingsnis.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      final buffers = <int, StringBuffer>{};
+      for (final z in zingsniai) {
+        final irId = irasasIdByLinkId[z.testasIrasasId];
+        if (irId == null) continue;
+        final comment = _normalizeKomentaras(z.komentaras);
+        if (comment.isEmpty) continue;
+
+        final b = buffers.putIfAbsent(irId, StringBuffer.new);
+        if (b.isNotEmpty) b.write(' ');
+        b.write(comment.toLowerCase());
+      }
+
+      final map = <int, String>{
+        for (final e in buffers.entries) e.key: e.value.toString(),
+      };
+
+      if (!mounted) return;
+      setState(() {
+        _komentaraiByIrasasId = map;
+        _komentaraiLoaded = true;
+        _komentaraiLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _komentaraiLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Klaida kraunant komentarus: $e')));
+    }
+  }
 
   String _statusCategory(String raw) {
     final s = raw.trim().toLowerCase();
@@ -79,6 +145,11 @@ class _IrasaiPageState extends State<IrasaiPage> {
         _lokacijaNameById
           ..clear()
           ..addAll(locMap);
+
+        // Comments can change while executing steps; rebuild lazily when needed.
+        _komentaraiByIrasasId = {};
+        _komentaraiLoaded = false;
+        _komentaraiLoading = false;
       });
     } catch (e) {
       ScaffoldMessenger.of(
@@ -112,11 +183,16 @@ class _IrasaiPageState extends State<IrasaiPage> {
 
   List<Irasas> _filteredAndSortedItems() {
     final q = _query.trim().toLowerCase();
-    final list =
-        (q.isEmpty
-                ? _items
-                : _items.where((e) => e.pavadinimas.toLowerCase().contains(q)))
-            .toList();
+    bool matchesQuery(Irasas e) {
+      if (q.isEmpty) return true;
+      if (e.pavadinimas.toLowerCase().contains(q)) return true;
+      if (e.idDokumento.toLowerCase().contains(q)) return true;
+      final k = _komentaraiByIrasasId[e.id];
+      if (k != null && k.contains(q)) return true;
+      return false;
+    }
+
+    final list = _items.where(matchesQuery).toList();
 
     final filters = _statusFilters;
     final filtered = filters.isEmpty
@@ -704,9 +780,15 @@ class _IrasaiPageState extends State<IrasaiPage> {
                           child: TextField(
                             decoration: const InputDecoration(
                               prefixIcon: Icon(Icons.search),
-                              labelText: 'Paieška pagal pavadinimą',
+                              labelText:
+                                  'Paieška pagal pavadinimą / dokumento ID / komentarą',
                             ),
-                            onChanged: (v) => setState(() => _query = v),
+                            onChanged: (v) {
+                              setState(() => _query = v);
+                              if (v.trim().isNotEmpty) {
+                                _ensureKomentaraiIndexLoaded();
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
