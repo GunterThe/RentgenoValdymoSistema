@@ -105,12 +105,10 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
 
     setState(() => _reordering = true);
     try {
-      // Reorder in-memory list.
       if (newIndex > oldIndex) newIndex -= 1;
       final moved = _items.removeAt(oldIndex);
       _items.insert(newIndex, moved);
 
-      // Persist only the moved item's new position; backend will shift others.
       final newEile = newIndex + 1;
       final payload = {
         'id': moved.id,

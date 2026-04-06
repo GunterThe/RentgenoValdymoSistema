@@ -106,7 +106,6 @@ class _IrasaiPageState extends State<IrasaiPage> {
     if (cat == 'nepradetas') return 'Nepradėtas';
     if (cat == 'pabaigtas') return 'Pabaigtas';
     if (cat == 'ant') {
-      // Keep details, just capitalize the first word.
       return 'Ant${t.length > 3 ? t.substring(3) : ''}';
     }
     return t;
@@ -146,7 +145,6 @@ class _IrasaiPageState extends State<IrasaiPage> {
           ..clear()
           ..addAll(locMap);
 
-        // Comments can change while executing steps; rebuild lazily when needed.
         _komentaraiByIrasasId = {};
         _komentaraiLoaded = false;
         _komentaraiLoading = false;

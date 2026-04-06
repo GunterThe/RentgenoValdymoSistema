@@ -53,7 +53,6 @@ class _TestaiPageState extends State<TestaiPage> {
         case 'Pakavimas':
           return 2;
         default:
-          // try parse numeric
           return int.tryParse(t);
       }
     }

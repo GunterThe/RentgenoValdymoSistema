@@ -86,6 +86,7 @@ namespace Backend.Controllers
         {
             var item = await _db.TestasIrasai.FindAsync(id);
             if (item == null) return NotFound();
+            _db.Zingsniai.RemoveRange(_db.Zingsniai.Where(z => z.TestasIrasasId == id));
             _db.TestasIrasai.Remove(item);
             await _db.SaveChangesAsync();
             return NoContent();

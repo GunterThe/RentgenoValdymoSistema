@@ -24,7 +24,6 @@ class AuthService extends ChangeNotifier {
   Future<void> init() async {
     _tokens = await _store.read();
 
-    // If we have tokens but access is expired, try refreshing once at startup.
     if (_tokens != null && JwtUtils.isExpired(_tokens!.accessToken)) {
       await _tryRefresh();
     }
@@ -65,7 +64,6 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    // Best-effort revoke; ignore failures.
     final refresh = _tokens?.refreshToken;
     if (refresh != null) {
       try {
@@ -95,7 +93,6 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _tryRefresh() async {
-    // De-dupe concurrent refresh attempts.
     _refreshInFlight ??= _refresh();
     try {
       await _refreshInFlight;
@@ -120,7 +117,6 @@ class AuthService extends ChangeNotifier {
     );
 
     if (res.statusCode != 200) {
-      // Refresh token no longer valid.
       _tokens = null;
       await _store.clear();
       notifyListeners();

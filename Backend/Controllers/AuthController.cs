@@ -28,14 +28,12 @@ namespace Backend.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<AuthResponse>> Login(LoginRequest req)
         {
-            // No need to load RefreshToken collection here; avoiding it prevents provider type mismatches
             var user = await _db.Naudotojai.FirstOrDefaultAsync(u => u.PrisijungimoId == req.PrisijungimoId);
             if (user == null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             {
                 return Unauthorized(new { message = "Invalid credentials" });
             }
             var refresh = _tokenService.CreateRefreshToken(user);
-            // Add the refresh token directly; NaudotojasId is set in the token factory
             _db.RefreshTokens.Add(refresh);
             await _db.SaveChangesAsync();
             var access = _tokenService.CreateAccessToken(user);
@@ -57,7 +55,6 @@ namespace Backend.Controllers
             {
                 return Unauthorized(new { message = "Invalid refresh token" });
             }
-            // Revoke old
             tokenEntity.Revoked = DateTime.UtcNow;
 
             var user = await _db.Naudotojai.FirstOrDefaultAsync(u => u.Id == tokenEntity.NaudotojasId);

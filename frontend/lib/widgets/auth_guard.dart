@@ -18,7 +18,6 @@ class AuthGuard extends StatelessWidget {
     return AnimatedBuilder(
       animation: AuthService.instance,
       builder: (context, _) {
-        // While we are reading secure storage on startup, don't flash login.
         if (!AuthService.instance.isInitialized) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
