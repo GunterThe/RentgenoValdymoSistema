@@ -1,6 +1,7 @@
 class PrisegtasFailas {
   final String id;
   final int? zingsnisId;
+  final int? zingsnisTemplateId;
   final String? failoPav;
   final int? dydis;
   final DateTime? sukurimoLaikas;
@@ -8,6 +9,7 @@ class PrisegtasFailas {
   PrisegtasFailas({
     required this.id,
     required this.zingsnisId,
+    required this.zingsnisTemplateId,
     required this.failoPav,
     required this.dydis,
     required this.sukurimoLaikas,
@@ -23,6 +25,7 @@ class PrisegtasFailas {
     return PrisegtasFailas(
       id: (j['id'] ?? '').toString(),
       zingsnisId: (j['zingsnisId'] ?? j['zingsnis_id']) as int?,
+      zingsnisTemplateId: (j['zingsnisTemplateId'] ?? j['zingsnis_template_id']) as int?,
       failoPav: (j['failoPav'] ?? j['failopav']) as String?,
       dydis: (j['dydis']) as int?,
       sukurimoLaikas: created,

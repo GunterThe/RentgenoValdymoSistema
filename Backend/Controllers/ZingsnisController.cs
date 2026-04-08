@@ -67,6 +67,14 @@ namespace Backend.Controllers
         {
             if (zingsnis.CompletedAt == null) return null;
 
+            var template = await _db.ZingsnisTemplate
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == zingsnis.ZingsnisTemplateId);
+            if (template == null)
+            {
+                return "Nerastas žingsnio šablonas (zingsnisTemplate).";
+            }
+
             var currentLink = await _db.TestasIrasai
                 .AsNoTracking()
                 .FirstOrDefaultAsync(t => t.Id == zingsnis.TestasIrasasId);
@@ -90,18 +98,55 @@ namespace Backend.Controllers
             }
 
             var komentaras = NormalizeKomentaras(zingsnis.Komentaras);
-            if (string.IsNullOrWhiteSpace(komentaras))
+            var requireComment = template.KomentarasPrivalomas;
+            var requirePhoto = template.NuotraukaPrivaloma;
+
+            var hasComment = !string.IsNullOrWhiteSpace(komentaras);
+            var hasImage = false;
+
+            if (requirePhoto)
             {
+                if (zingsnis.Id <= 0)
+                {
+                    return "Norint užbaigti žingsnį su privaloma nuotrauka, pirmiausia sukurkite žingsnį ir prisegkite nuotrauką.";
+                }
+
                 var fileNames = await _db.PrisegtiFailai
                     .AsNoTracking()
                     .Where(p => p.ZingsnisId == zingsnis.Id)
                     .Select(p => p.FailoPav)
                     .ToListAsync();
 
-                var hasImage = fileNames.Any(IsImageFileName);
+                hasImage = fileNames.Any(IsImageFileName);
+            }
+
+            if (requireComment && requirePhoto)
+            {
+                if (!hasComment && !hasImage)
+                {
+                    return "Norint užbaigti žingsnį, reikalingas komentaras ir nuotrauka.";
+                }
+                if (!hasComment)
+                {
+                    return "Norint užbaigti žingsnį, reikalingas komentaras.";
+                }
                 if (!hasImage)
                 {
-                    return "Norint užbaigti žingsnį, reikalingas komentaras arba nuotrauka.";
+                    return "Norint užbaigti žingsnį, reikalinga nuotrauka.";
+                }
+            }
+            else if (requireComment)
+            {
+                if (!hasComment)
+                {
+                    return "Norint užbaigti žingsnį, reikalingas komentaras.";
+                }
+            }
+            else if (requirePhoto)
+            {
+                if (!hasImage)
+                {
+                    return "Norint užbaigti žingsnį, reikalinga nuotrauka.";
                 }
             }
 
@@ -157,7 +202,6 @@ namespace Backend.Controllers
             {
                 if (!templatesByTestId.TryGetValue(link.Testasid, out var tpls) || tpls.Count == 0)
                 {
-                    // No templates for this test => nothing to do here.
                     continue;
                 }
 
@@ -299,6 +343,7 @@ namespace Backend.Controllers
             if (item == null) return NotFound();
 
             var link = await _db.TestasIrasai.AsNoTracking().FirstOrDefaultAsync(t => t.Id == item.TestasIrasasId);
+            _db.PrisegtiFailai.RemoveRange(_db.PrisegtiFailai.Where(p => p.ZingsnisId == id));
             _db.Zingsniai.Remove(item);
             await _db.SaveChangesAsync();
 

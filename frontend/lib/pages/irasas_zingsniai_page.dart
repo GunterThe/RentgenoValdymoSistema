@@ -42,6 +42,9 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
   final Map<int, List<PrisegtasFailas>> _failaiByZingsnisId = {};
   final Set<int> _loadingFailaiForZingsnis = {};
 
+  final Map<int, List<PrisegtasFailas>> _failaiByTemplateId = {};
+  final Set<int> _loadingFailaiForTemplate = {};
+
   final Map<String, Naudotojas> _naudotojaiById = {};
   final Set<String> _loadingNaudotojai = {};
 
@@ -276,25 +279,68 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
     final draftCompleted = draft.completed;
 
     if (draftCompleted) {
-      final hasComment = draftKomentaras.isNotEmpty;
+      final reqComment = template.komentarasPrivalomas;
+      final reqPhoto = template.nuotraukaPrivaloma;
 
+      final hasComment = draftKomentaras.isNotEmpty;
       var hasPicture = false;
-      if (!hasComment) {
+
+      if (reqPhoto) {
         final zId = existing?.id;
         if (zId != null) {
           hasPicture = await _hasPictureForZingsnis(zId);
         }
       }
 
-      if (!hasComment && !hasPicture) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Norint pažymėti pabaigtą, reikia komentaro arba nuotraukos (prisegto paveikslėlio).',
+      if (reqComment && reqPhoto) {
+        if (!hasComment && !hasPicture) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Norint pažymėti pabaigtą, reikia komentaro ir nuotraukos (prisegto paveikslėlio).',
+              ),
             ),
-          ),
-        );
-        return;
+          );
+          return;
+        }
+        if (!hasComment) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Norint pažymėti pabaigtą, reikia komentaro.'),
+            ),
+          );
+          return;
+        }
+        if (!hasPicture) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Norint pažymėti pabaigtą, reikia nuotraukos (prisegto paveikslėlio).',
+              ),
+            ),
+          );
+          return;
+        }
+      } else if (reqComment) {
+        if (!hasComment) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Norint pažymėti pabaigtą, reikia komentaro.'),
+            ),
+          );
+          return;
+        }
+      } else if (reqPhoto) {
+        if (!hasPicture) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Norint pažymėti pabaigtą, reikia nuotraukos (prisegto paveikslėlio).',
+              ),
+            ),
+          );
+          return;
+        }
       }
     }
 
@@ -413,6 +459,25 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
       if (mounted) {
         setState(() => _loadingFailaiForZingsnis.remove(zingsnisId));
       }
+    }
+  }
+
+  Future<void> _loadTemplateFailai(int templateId) async {
+    if (_loadingFailaiForTemplate.contains(templateId)) return;
+    if (_failaiByTemplateId.containsKey(templateId)) return;
+    setState(() => _loadingFailaiForTemplate.add(templateId));
+    try {
+      final list = await Api.fetchPrisegtiFailaiByZingsnisTemplate(templateId);
+      final items = list
+          .map((e) => PrisegtasFailas.fromJson(e as Map<String, dynamic>))
+          .toList();
+      if (!mounted) return;
+      setState(() => _failaiByTemplateId[templateId] = items);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _failaiByTemplateId[templateId] = const <PrisegtasFailas>[]);
+    } finally {
+      if (mounted) setState(() => _loadingFailaiForTemplate.remove(templateId));
     }
   }
 
@@ -697,6 +762,7 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                             ),
                                             onExpansionChanged: (expanded) {
                                               if (!expanded) return;
+                                              _loadTemplateFailai(tpl.id);
                                               if (zingsnisId == null) return;
                                               _loadFailai(zingsnisId);
 
@@ -713,6 +779,56 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                   12,
                                                 ),
                                             children: [
+                                              if (_loadingFailaiForTemplate
+                                                  .contains(tpl.id))
+                                                const Padding(
+                                                  padding: EdgeInsets.only(
+                                                    top: 6,
+                                                    bottom: 6,
+                                                  ),
+                                                  child:
+                                                      LinearProgressIndicator(),
+                                                ),
+                                              Builder(
+                                                builder: (context) {
+                                                  final list =
+                                                      _failaiByTemplateId[tpl.id] ??
+                                                          const <PrisegtasFailas>[];
+                                                  final img = list.firstWhere(
+                                                    (f) => _isImageFileName(f.failoPav),
+                                                    orElse: () => PrisegtasFailas(
+                                                      id: '',
+                                                      zingsnisId: null,
+                                                      zingsnisTemplateId: null,
+                                                      failoPav: null,
+                                                      dydis: null,
+                                                      sukurimoLaikas: null,
+                                                    ),
+                                                  );
+                                                  if (img.id.isEmpty) return const SizedBox.shrink();
+
+                                                  return Padding(
+                                                    padding: const EdgeInsets.only(
+                                                      bottom: 10,
+                                                      top: 6,
+                                                    ),
+                                                    child: ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(12),
+                                                      child: Image.network(
+                                                        Api.prisegtasFailasFileUri(
+                                                          img.id,
+                                                        ).toString(),
+                                                        fit: BoxFit.contain,
+                                                        errorBuilder:
+                                                            (context, _, _) =>
+                                                                const SizedBox
+                                                                    .shrink(),
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
                                               Align(
                                                 alignment: Alignment.centerLeft,
                                                 child: Text(

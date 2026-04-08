@@ -4,6 +4,8 @@ class ZingsnisTemplate {
   String aprasymas;
   int testasId;
   int eile;
+  bool komentarasPrivalomas;
+  bool nuotraukaPrivaloma;
 
   ZingsnisTemplate({
     required this.id,
@@ -11,6 +13,8 @@ class ZingsnisTemplate {
     required this.aprasymas,
     required this.testasId,
     required this.eile,
+    this.komentarasPrivalomas = false,
+    this.nuotraukaPrivaloma = false,
   });
 
   factory ZingsnisTemplate.fromJson(Map<String, dynamic> j) => ZingsnisTemplate(
@@ -19,6 +23,8 @@ class ZingsnisTemplate {
         aprasymas: j['aprasymas'] ?? '',
         testasId: j['testasId'] ?? j['testas_id'] ?? 0,
         eile: j['eile'] ?? 0,
+      komentarasPrivalomas: (j['komentarasPrivalomas'] ?? j['komentaras_privalomas'] ?? false) as bool,
+      nuotraukaPrivaloma: (j['nuotraukaPrivaloma'] ?? j['nuotrauka_privaloma'] ?? false) as bool,
       );
 
   Map<String, dynamic> toJson() => {
@@ -27,5 +33,7 @@ class ZingsnisTemplate {
         'aprasymas': aprasymas,
         'testasId': testasId,
         'eile': eile,
+      'komentarasPrivalomas': komentarasPrivalomas,
+      'nuotraukaPrivaloma': nuotraukaPrivaloma,
       };
 }

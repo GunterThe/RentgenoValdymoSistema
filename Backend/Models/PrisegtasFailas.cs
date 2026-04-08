@@ -27,7 +27,13 @@ namespace Backend.Models
         [Column("sukurimolaikas")]
         public DateTime? SukurimoLaikas { get; set; }
 
+        [Column("zingsnis_template_id")]
+        public int? ZingsnisTemplateId { get; set; }
+
         [JsonIgnore]
         public Zingsnis? Zingsnis { get; set; }
+
+        [JsonIgnore]
+        public ZingsnisTemplate? ZingsnisTemplate { get; set; }
     }
 }

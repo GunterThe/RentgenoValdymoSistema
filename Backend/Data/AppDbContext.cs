@@ -62,6 +62,12 @@ namespace Backend.Data
                 .HasForeignKey(p => p.ZingsnisId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<PrisegtasFailas>()
+                .HasOne(p => p.ZingsnisTemplate)
+                .WithMany()
+                .HasForeignKey(p => p.ZingsnisTemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             modelBuilder.Entity<Zingsnis>()
                 .HasOne(z => z.TestasIrasas)
                 .WithMany()

@@ -34,7 +34,6 @@ namespace Backend.Controllers
         [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<Testas>> Create(Testas testas)
         {
-            // Avoid EF trying to send enum as text; cast explicitly to Postgres enum type.
             int newId;
             await using (var cmd = _db.Database.GetDbConnection().CreateCommand())
             {
@@ -61,7 +60,6 @@ namespace Backend.Controllers
                 newId = scalar == null ? 0 : System.Convert.ToInt32(scalar);
             }
 
-            // Return the created entity (freshly loaded from DB).
             var created = await _db.Testai.AsNoTracking().FirstAsync(t => t.Id == newId);
             return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
         }

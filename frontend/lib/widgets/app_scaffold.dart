@@ -28,7 +28,7 @@ class AppScaffold extends StatelessWidget {
     return [
       IconButton(
         tooltip: 'Paskyra',
-        onPressed: () => showPlaceholder(context, 'Paskyra'),
+        onPressed: () => Navigator.of(context).pushNamed('/paskyra'),
         icon: const Icon(Icons.person_outline),
       ),
       IconButton(

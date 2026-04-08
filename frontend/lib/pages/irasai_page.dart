@@ -328,7 +328,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
       'pavadinimas': pavCtrl.text.trim(),
       'idDokumento': idDocCtrl.text.trim(),
       'pradzia': pradzia.toUtc().toIso8601String(),
-      'pabaiga': pabaiga == null ? null : pabaiga!.toUtc().toIso8601String(),
+      'pabaiga': pabaiga?.toUtc().toIso8601String(),
     };
 
     try {
@@ -422,7 +422,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
-                value: lokacijaId,
+                initialValue: lokacijaId,
                 decoration: const InputDecoration(labelText: 'Lokacija'),
                 items: lokacijos
                     .map(
@@ -436,7 +436,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int?>(
-                value: sablonasId,
+                initialValue: sablonasId,
                 decoration: const InputDecoration(
                   labelText: 'Šablonas (nebūtina)',
                 ),
@@ -521,7 +521,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
       'pavadinimas': pavCtrl.text.trim(),
       'idDokumento': idDocCtrl.text.trim(),
       'pradzia': pradzia.toUtc().toIso8601String(),
-      'pabaiga': pabaiga == null ? null : pabaiga!.toUtc().toIso8601String(),
+      'pabaiga': pabaiga?.toUtc().toIso8601String(),
       'lokacijaId': lokacijaId,
       'sablonasId': sablonasId,
     };

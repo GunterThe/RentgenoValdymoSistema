@@ -43,7 +43,7 @@ class _TestaiPageState extends State<TestaiPage> {
     final ctrl = TextEditingController(text: existing?.testotekstas ?? '');
     String? tipas = existing?.tipas ?? 'Testas';
 
-    int? _tipasToIndex(String? t) {
+    int? tipasToIndex(String? t) {
       if (t == null) return null;
       switch (t) {
         case 'Testas':
@@ -102,7 +102,7 @@ class _TestaiPageState extends State<TestaiPage> {
       if (existing == null) {
         final created = await Api.createTestas({
           'testotekstas': text,
-          'tipas': _tipasToIndex(tipas),
+          'tipas': tipasToIndex(tipas),
         });
         setState(() {
           _items.add(Testas.fromJson(created));
@@ -111,7 +111,7 @@ class _TestaiPageState extends State<TestaiPage> {
         final payload = {
           'id': existing.id,
           'testotekstas': text,
-          'tipas': _tipasToIndex(tipas),
+          'tipas': tipasToIndex(tipas),
         };
         await Api.updateTestas(existing.id, payload);
         setState(() {

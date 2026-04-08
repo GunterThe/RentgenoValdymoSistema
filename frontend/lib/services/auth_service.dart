@@ -21,6 +21,38 @@ class AuthService extends ChangeNotifier {
   bool get isInitialized => _initialized;
   bool get isAuthenticated => _tokens != null;
 
+  String? get accessToken => _tokens?.accessToken;
+
+  String? get currentUserId {
+    final jwt = _tokens?.accessToken;
+    if (jwt == null || jwt.isEmpty) return null;
+    return JwtUtils.tryGetSubject(jwt);
+  }
+
+  bool get isAdmin {
+    final jwt = _tokens?.accessToken;
+    if (jwt == null || jwt.isEmpty) return false;
+    final admin = (JwtUtils.tryGetClaim(jwt, 'admin') ?? '').trim();
+    return admin.toLowerCase() == 'true';
+  }
+
+  String get displayName {
+    final jwt = _tokens?.accessToken;
+    if (jwt == null || jwt.isEmpty) return '';
+    final vardas = (JwtUtils.tryGetClaim(jwt, 'vardas') ?? '').trim();
+    final pavarde = (JwtUtils.tryGetClaim(jwt, 'pavarde') ?? '').trim();
+    if (vardas.isEmpty && pavarde.isEmpty) return '';
+    if (vardas.isEmpty) return pavarde;
+    if (pavarde.isEmpty) return vardas;
+    return '$vardas $pavarde';
+  }
+
+  String get prisijungimoId {
+    final jwt = _tokens?.accessToken;
+    if (jwt == null || jwt.isEmpty) return '';
+    return (JwtUtils.tryGetClaim(jwt, 'email') ?? '').trim();
+  }
+
   Future<void> init() async {
     _tokens = await _store.read();
 

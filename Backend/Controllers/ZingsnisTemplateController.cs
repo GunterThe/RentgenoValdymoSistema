@@ -64,6 +64,8 @@ namespace Backend.Controllers
 
                 existing.Pavadinimas = template.Pavadinimas;
                 existing.Aprasymas = template.Aprasymas;
+                existing.KomentarasPrivalomas = template.KomentarasPrivalomas;
+                existing.NuotraukaPrivaloma = template.NuotraukaPrivaloma;
 
                 var siblings = await _db.ZingsnisTemplate
                     .Where(z => z.TestasId == oldTestasId && z.Id != existing.Id)
@@ -104,6 +106,28 @@ namespace Backend.Controllers
         {
             var item = await _db.ZingsnisTemplate.FindAsync(id);
             if (item == null) return NotFound();
+
+            var tplFiles = await _db.PrisegtiFailai
+                .Where(p => p.ZingsnisTemplateId == id)
+                .ToListAsync();
+            foreach (var f in tplFiles)
+            {
+                if (!string.IsNullOrWhiteSpace(f.Nuoroda))
+                {
+                    try
+                    {
+                        var path = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), f.Nuoroda);
+                        if (System.IO.File.Exists(path))
+                            System.IO.File.Delete(path);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+            _db.PrisegtiFailai.RemoveRange(tplFiles);
+
+            _db.Zingsniai.RemoveRange(_db.Zingsniai.Where(z => z.ZingsnisTemplateId == id));
             _db.ZingsnisTemplate.Remove(item);
             await _db.SaveChangesAsync();
             return NoContent();

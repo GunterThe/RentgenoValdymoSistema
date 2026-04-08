@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/testas.dart';
 import '../models/zingsnis_template.dart';
 import '../services/api.dart';
 import '../widgets/app_scaffold.dart';
+
+enum _CompletionRequirement { none, comment, photo, both }
 
 class ZingsnisPage extends StatefulWidget {
   final Testas testas;
@@ -16,6 +19,28 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
   List<ZingsnisTemplate> _items = [];
   bool _loading = true;
   bool _reordering = false;
+
+  _CompletionRequirement _reqFromFlags(bool komentarasPrivalomas, bool nuotraukaPrivaloma) {
+    if (komentarasPrivalomas && nuotraukaPrivaloma) return _CompletionRequirement.both;
+    if (komentarasPrivalomas) return _CompletionRequirement.comment;
+    if (nuotraukaPrivaloma) return _CompletionRequirement.photo;
+    return _CompletionRequirement.none;
+  }
+
+  ({bool komentarasPrivalomas, bool nuotraukaPrivaloma}) _flagsFromReq(
+    _CompletionRequirement req,
+  ) {
+    switch (req) {
+      case _CompletionRequirement.none:
+        return (komentarasPrivalomas: false, nuotraukaPrivaloma: false);
+      case _CompletionRequirement.comment:
+        return (komentarasPrivalomas: true, nuotraukaPrivaloma: false);
+      case _CompletionRequirement.photo:
+        return (komentarasPrivalomas: false, nuotraukaPrivaloma: true);
+      case _CompletionRequirement.both:
+        return (komentarasPrivalomas: true, nuotraukaPrivaloma: true);
+    }
+  }
 
   @override
   void initState() {
@@ -44,17 +69,88 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
     final titleCtrl = TextEditingController(text: existing?.pavadinimas ?? '');
     final descCtrl = TextEditingController(text: existing?.aprasymas ?? '');
 
+    var req = _reqFromFlags(
+      existing?.komentarasPrivalomas ?? false,
+      existing?.nuotraukaPrivaloma ?? false,
+    );
+
+    PlatformFile? pickedImage;
+
     final ok = await showDialog<bool?>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(existing == null ? 'Naujas žingsnis' : 'Redaguoti žingsnį'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Pavadinimas')),
-            const SizedBox(height: 8),
-            TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Aprašymas')),
-          ],
+        content: StatefulBuilder(
+          builder: (ctx, setStateDialog) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleCtrl,
+                decoration: const InputDecoration(labelText: 'Pavadinimas'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: descCtrl,
+                decoration: const InputDecoration(labelText: 'Aprašymas'),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<_CompletionRequirement>(
+                initialValue: req,
+                decoration: const InputDecoration(
+                  labelText: 'Užbaigimo reikalavimas',
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: _CompletionRequirement.none,
+                    child: Text('Nei komentaras, nei nuotrauka'),
+                  ),
+                  DropdownMenuItem(
+                    value: _CompletionRequirement.comment,
+                    child: Text('Privalomas komentaras'),
+                  ),
+                  DropdownMenuItem(
+                    value: _CompletionRequirement.photo,
+                    child: Text('Privaloma nuotrauka'),
+                  ),
+                  DropdownMenuItem(
+                    value: _CompletionRequirement.both,
+                    child: Text('Privalomas komentaras ir nuotrauka'),
+                  ),
+                ],
+                onChanged: (v) {
+                  if (v == null) return;
+                  setStateDialog(() => req = v);
+                },
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: () async {
+                      final res = await FilePicker.platform.pickFiles(
+                        type: FileType.image,
+                        withData: true,
+                      );
+                      if (res == null || res.files.isEmpty) return;
+                      setStateDialog(() => pickedImage = res.files.single);
+                    },
+                    icon: const Icon(Icons.image_outlined),
+                    label: const Text('Pridėti paveikslėlį'),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      pickedImage?.name ?? 'Nepasirinkta',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Atšaukti')),
@@ -68,17 +164,33 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
     final desc = descCtrl.text.trim();
     if (title.isEmpty || desc.isEmpty) return;
 
+    final flags = _flagsFromReq(req);
+
     try {
       if (existing == null) {
         final created = await Api.createZingsnisTemplate({
           'pavadinimas': title,
           'aprasymas': desc,
           'testasId': widget.testas.id,
+          'komentarasPrivalomas': flags.komentarasPrivalomas,
+          'nuotraukaPrivaloma': flags.nuotraukaPrivaloma,
         });
+
+        if (pickedImage != null) {
+          await Api.uploadPrisegtasFailasToZingsnisTemplate(
+            templateId: created['id'] as int,
+            fileName: pickedImage!.name,
+            bytes: pickedImage!.bytes,
+            filePath: pickedImage!.path,
+          );
+        }
+
         setState(() {
           _items.add(ZingsnisTemplate.fromJson(created));
           _items.sort((a, b) => a.eile.compareTo(b.eile));
         });
+
+        await _load();
       } else {
         final payload = {
           'id': existing.id,
@@ -86,12 +198,28 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
           'aprasymas': desc,
           'testasId': widget.testas.id,
           'eile': existing.eile,
+          'komentarasPrivalomas': flags.komentarasPrivalomas,
+          'nuotraukaPrivaloma': flags.nuotraukaPrivaloma,
         };
         await Api.updateZingsnisTemplate(existing.id, payload);
+
+        if (pickedImage != null) {
+          await Api.uploadPrisegtasFailasToZingsnisTemplate(
+            templateId: existing.id,
+            fileName: pickedImage!.name,
+            bytes: pickedImage!.bytes,
+            filePath: pickedImage!.path,
+          );
+        }
+
         setState(() {
           existing.pavadinimas = title;
           existing.aprasymas = desc;
+          existing.komentarasPrivalomas = flags.komentarasPrivalomas;
+          existing.nuotraukaPrivaloma = flags.nuotraukaPrivaloma;
         });
+
+        await _load();
       }
     } catch (e) {
       if (!mounted) return;
@@ -116,6 +244,8 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
         'aprasymas': moved.aprasymas,
         'testasId': moved.testasId,
         'eile': newEile,
+        'komentarasPrivalomas': moved.komentarasPrivalomas,
+        'nuotraukaPrivaloma': moved.nuotraukaPrivaloma,
       };
       await Api.updateZingsnisTemplate(moved.id, payload);
 

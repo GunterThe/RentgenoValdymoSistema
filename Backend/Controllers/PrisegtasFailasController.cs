@@ -20,6 +20,27 @@ namespace Backend.Controllers
         private readonly AppDbContext _db;
         public PrisegtasFailasController(AppDbContext db) => _db = db;
 
+        private static bool IsImageFileName(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return false;
+            var ext = Path.GetExtension(name).ToLowerInvariant();
+            return ext is ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".avif" or ".heic" or ".heif" or ".tif" or ".tiff";
+        }
+
+        private static void TryDeletePhysicalFile(string? relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath)) return;
+            try
+            {
+                var path = Path.Combine(Directory.GetCurrentDirectory(), relativePath);
+                if (System.IO.File.Exists(path))
+                    System.IO.File.Delete(path);
+            }
+            catch
+            {
+            }
+        }
+
         private static string? ResolveAbsolutePath(string? storedRelativePath)
         {
             if (string.IsNullOrWhiteSpace(storedRelativePath)) return null;
@@ -50,6 +71,16 @@ namespace Backend.Controllers
         {
             var list = await _db.PrisegtiFailai
                 .Where(p => p.ZingsnisId == zingsnisid)
+                .OrderByDescending(p => p.SukurimoLaikas)
+                .ToListAsync();
+            return list;
+        }
+
+        [HttpGet("byZingsnisTemplate/{templateId}")]
+        public async Task<ActionResult<IEnumerable<PrisegtasFailas>>> GetByZingsnisTemplate(int templateId)
+        {
+            var list = await _db.PrisegtiFailai
+                .Where(p => p.ZingsnisTemplateId == templateId)
                 .OrderByDescending(p => p.SukurimoLaikas)
                 .ToListAsync();
             return list;
@@ -125,6 +156,59 @@ namespace Backend.Controllers
             return CreatedAtAction(nameof(Get), new { id = model.Id }, model);
         }
 
+        [HttpPost("uploadTemplate/{templateId}")]
+        [Consumes("multipart/form-data")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<ActionResult<PrisegtasFailas>> UploadTemplateImage(int templateId, IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+            if (!IsImageFileName(file.FileName)) return BadRequest("Only image files are allowed.");
+
+            var templateExists = await _db.ZingsnisTemplate.AsNoTracking().AnyAsync(t => t.Id == templateId);
+            if (!templateExists) return NotFound("Template not found.");
+
+            // Keep a single image per template: delete existing rows + files first.
+            var existing = await _db.PrisegtiFailai
+                .Where(p => p.ZingsnisTemplateId == templateId)
+                .ToListAsync();
+            foreach (var e in existing)
+            {
+                TryDeletePhysicalFile(e.Nuoroda);
+            }
+            if (existing.Count > 0)
+            {
+                _db.PrisegtiFailai.RemoveRange(existing);
+                await _db.SaveChangesAsync();
+            }
+
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "templates");
+            if (!Directory.Exists(uploadsDir)) Directory.CreateDirectory(uploadsDir);
+
+            var savedFileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            var filePath = Path.Combine(uploadsDir, savedFileName);
+
+            await using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var model = new PrisegtasFailas
+            {
+                Id = Guid.NewGuid(),
+                ZingsnisId = null,
+                ZingsnisTemplateId = templateId,
+                FailoPav = file.FileName,
+                Dydis = file.Length,
+                Nuoroda = Path.Combine("uploads", "templates", savedFileName),
+                SukurimoLaikas = DateTime.UtcNow
+            };
+
+            _db.PrisegtiFailai.Add(model);
+            await _db.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(Get), new { id = model.Id }, model);
+        }
+
         [HttpPut("{id}")]
         [Authorize]
         public async Task<IActionResult> Update(Guid id, PrisegtasFailas model)
@@ -142,19 +226,7 @@ namespace Backend.Controllers
             var item = await _db.PrisegtiFailai.FindAsync(id);
             if (item == null) return NotFound();
 
-            if (!string.IsNullOrWhiteSpace(item.Nuoroda))
-            {
-                try
-                {
-                    var path = Path.Combine(Directory.GetCurrentDirectory(), item.Nuoroda);
-                    if (System.IO.File.Exists(path))
-                        System.IO.File.Delete(path);
-                }
-                catch
-                {
-                    // ignore file system errors; still delete DB record
-                }
-            }
+            TryDeletePhysicalFile(item.Nuoroda);
 
             _db.PrisegtiFailai.Remove(item);
             await _db.SaveChangesAsync();

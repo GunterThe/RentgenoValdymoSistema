@@ -28,6 +28,12 @@ namespace Backend.Models
         [Required]
         [Column("eile")]
         public int Eile { get; set; }
+        
+        [Column("komentaras_privalomas")]
+        public bool KomentarasPrivalomas { get; set; } = false;
+
+        [Column("nuotrauka_privaloma")]
+        public bool NuotraukaPrivaloma { get; set; } = false;
 
         [JsonIgnore]
         public Testas? Testas { get; set; }

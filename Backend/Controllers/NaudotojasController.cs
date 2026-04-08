@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Backend.Data;
 using Backend.Models;
@@ -17,14 +20,78 @@ namespace Backend.Controllers
         private readonly AppDbContext _db;
         public NaudotojasController(AppDbContext db) => _db = db;
 
+        public sealed class CreateUserRequest
+        {
+            public string Vardas { get; set; } = string.Empty;
+            public string Pavarde { get; set; } = string.Empty;
+            public DateTime GimimoData { get; set; }
+            public bool Adminas { get; set; }
+            public string Password { get; set; } = string.Empty;
+        }
+
         public sealed class ChangePasswordRequest
         {
             public string CurrentPassword { get; set; } = string.Empty;
             public string NewPassword { get; set; } = string.Empty;
         }
 
+        public sealed class AdminSetPasswordRequest
+        {
+            public string NewPassword { get; set; } = string.Empty;
+        }
+
+        public sealed class NaudotojasListItem
+        {
+            public Guid Id { get; set; }
+            public string Vardas { get; set; } = string.Empty;
+            public string Pavarde { get; set; } = string.Empty;
+            public string PrisijungimoId { get; set; } = string.Empty;
+            public bool Adminas { get; set; }
+        }
+
+        private Guid? TryGetCurrentUserId()
+        {
+            var idStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                        ?? User.FindFirstValue("sub");
+            if (Guid.TryParse(idStr, out var id)) return id;
+            return null;
+        }
+
+        private bool IsAdmin() => User.HasClaim("admin", bool.TrueString);
+
+        private static bool IsPasswordAcceptable(string password)
+        {
+            // Minimal policy: non-empty and at least 6 chars.
+            return !string.IsNullOrWhiteSpace(password) && password.Trim().Length >= 6;
+        }
+
+        private async Task RevokeAllRefreshTokens(Guid userId)
+        {
+            var tokens = await _db.RefreshTokens
+                .Where(t => t.NaudotojasId == userId && t.Revoked == null)
+                .ToListAsync();
+            if (tokens.Count == 0) return;
+            var now = DateTime.UtcNow;
+            foreach (var t in tokens) t.Revoked = now;
+        }
+
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Naudotojas>>> GetAll() => await _db.Naudotojai.ToListAsync();
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<ActionResult<IEnumerable<NaudotojasListItem>>> GetAll()
+        {
+            var list = await _db.Naudotojai
+                .Select(u => new NaudotojasListItem
+                {
+                    Id = u.Id,
+                    Vardas = u.Vardas,
+                    Pavarde = u.Pavarde,
+                    PrisijungimoId = u.PrisijungimoId,
+                    Adminas = u.Adminas
+                })
+                .ToListAsync();
+            return Ok(list);
+        }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Naudotojas>> Get(Guid id)
@@ -39,15 +106,48 @@ namespace Backend.Controllers
 
         [HttpPost]
         [Authorize(Policy = "AdminOnly")]
-        public async Task<ActionResult<Naudotojas>> Create(Naudotojas naudotojas)
+        public async Task<ActionResult<NaudotojasListItem>> Create([FromBody] CreateUserRequest req)
         {
-            if (naudotojas.Id == Guid.Empty) naudotojas.Id = Guid.NewGuid();
-            naudotojas.PasswordHash = BCrypt.Net.BCrypt.HashPassword(naudotojas.PasswordHash);
-            naudotojas.PrisijungimoId = naudotojas.Vardas.ToLower() + "." + naudotojas.Pavarde.ToLower() + "." + Guid.NewGuid().ToString("N").Substring(0, 3);
-            naudotojas.Id = Guid.NewGuid();
-            _db.Naudotojai.Add(naudotojas);
+            var vardas = (req.Vardas ?? string.Empty).Trim();
+            var pavarde = (req.Pavarde ?? string.Empty).Trim();
+            var password = (req.Password ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(vardas) || string.IsNullOrWhiteSpace(pavarde))
+            {
+                return BadRequest(new { message = "Vardas ir pavardė yra būtini" });
+            }
+            if (!IsPasswordAcceptable(password))
+            {
+                return BadRequest(new { message = "Slaptažodis turi būti bent 6 simboliai" });
+            }
+
+            var suffix = Guid.NewGuid().ToString("N").Substring(0, 3);
+            var prisijungimoId = $"{vardas.ToLowerInvariant().Replace(" ", "")}.{pavarde.ToLowerInvariant().Replace(" ", "")}.{suffix}";
+
+            var user = new Naudotojas
+            {
+                Id = Guid.NewGuid(),
+                Vardas = vardas,
+                Pavarde = pavarde,
+                GimimoData = req.GimimoData.Date,
+                Adminas = req.Adminas,
+                PrisijungimoId = prisijungimoId,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password)
+            };
+
+            _db.Naudotojai.Add(user);
             await _db.SaveChangesAsync();
-            return CreatedAtAction(nameof(Get), new { id = naudotojas.Id }, naudotojas);
+
+            var dto = new NaudotojasListItem
+            {
+                Id = user.Id,
+                Vardas = user.Vardas,
+                Pavarde = user.Pavarde,
+                PrisijungimoId = user.PrisijungimoId,
+                Adminas = user.Adminas
+            };
+
+            return CreatedAtAction(nameof(Get), new { id = user.Id }, dto);
         }
 
         [HttpPut("{id}")]
@@ -62,6 +162,17 @@ namespace Backend.Controllers
         [HttpPut("changePassword/{id:guid}")]
         public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordRequest req)
         {
+            var currentUserId = TryGetCurrentUserId();
+            if (currentUserId == null)
+            {
+                return Unauthorized(new { message = "Invalid user context" });
+            }
+
+            if (!IsAdmin() && id != currentUserId.Value)
+            {
+                return Forbid();
+            }
+
             var user = await _db.Naudotojai.FindAsync(id);
             if (user == null) return NotFound();
 
@@ -69,15 +180,39 @@ namespace Backend.Controllers
             var newPassword = (req.NewPassword ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(currentPassword) || string.IsNullOrWhiteSpace(newPassword))
             {
-                return BadRequest(new { message = "CurrentPassword and NewPassword are required" });
+                return BadRequest(new { message = "Dabartinis ir naujas slaptažodis yra būtini" });
+            }
+
+            if (!IsPasswordAcceptable(newPassword))
+            {
+                return BadRequest(new { message = "Naujas slaptažodis turi būti bent 6 simboliai" });
             }
 
             if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
             {
-                return Unauthorized(new { message = "Current password is incorrect" });
+                return Unauthorized(new { message = "Dabartinis slaptažodis yra neteisingas" });
             }
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-            _db.Entry(user).State = EntityState.Modified;
+            await RevokeAllRefreshTokens(user.Id);
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        [HttpPut("setPassword/{id:guid}")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<IActionResult> AdminSetPassword(Guid id, [FromBody] AdminSetPasswordRequest req)
+        {
+            var newPassword = (req.NewPassword ?? string.Empty).Trim();
+            if (!IsPasswordAcceptable(newPassword))
+            {
+                return BadRequest(new { message = "Naujas slaptažodis turi būti bent 6 simboliai" });
+            }
+
+            var user = await _db.Naudotojai.FindAsync(id);
+            if (user == null) return NotFound();
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            await RevokeAllRefreshTokens(user.Id);
             await _db.SaveChangesAsync();
             return NoContent();
         }

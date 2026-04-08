@@ -54,6 +54,86 @@ class Api {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  static Future<List<dynamic>> fetchNaudotojai() async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(Uri.parse('$baseUrl/api/Naudotojas'), headers: h),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load naudotojai (${res.statusCode})');
+    }
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> adminCreateNaudotojas({
+    required String vardas,
+    required String pavarde,
+    required DateTime gimimoData,
+    required bool adminas,
+    required String password,
+  }) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(
+        Uri.parse('$baseUrl/api/Naudotojas'),
+        headers: headers,
+        body: jsonEncode({
+          'vardas': vardas,
+          'pavarde': pavarde,
+          'gimimoData': gimimoData.toIso8601String(),
+          'adminas': adminas,
+          'password': password,
+        }),
+      );
+    });
+
+    if (res.statusCode != 201) {
+      throw Exception('Failed to create naudotojas (${res.statusCode}): ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> changePassword({
+    required String userId,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(
+        Uri.parse('$baseUrl/api/Naudotojas/changePassword/$userId'),
+        headers: headers,
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        }),
+      );
+    });
+    if (res.statusCode != 204) {
+      throw Exception(
+        'Failed to change password (${res.statusCode}): ${res.body}',
+      );
+    }
+  }
+
+  static Future<void> adminSetPassword({
+    required String userId,
+    required String newPassword,
+  }) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(
+        Uri.parse('$baseUrl/api/Naudotojas/setPassword/$userId'),
+        headers: headers,
+        body: jsonEncode({'newPassword': newPassword}),
+      );
+    });
+    if (res.statusCode != 204) {
+      throw Exception(
+        'Failed to set password (${res.statusCode}): ${res.body}',
+      );
+    }
+  }
+
   // Irašai
   static Future<List<dynamic>> fetchIrasai() async {
     final res = await _requestWithRefresh(
@@ -409,8 +489,9 @@ class Api {
         headers: h,
       ),
     );
-    if (res.statusCode != 204)
+    if (res.statusCode != 204) {
       throw Exception('Failed to delete prisegtas failas');
+    }
   }
 
   static Future<List<dynamic>> fetchPrisegtiFailaiByZingsnis(
@@ -424,6 +505,21 @@ class Api {
     );
     if (res.statusCode != 200) {
       throw Exception('Failed to load prisegti failai');
+    }
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<List<dynamic>> fetchPrisegtiFailaiByZingsnisTemplate(
+    int templateId,
+  ) async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(
+        Uri.parse('$baseUrl/api/prisegtasfailas/byZingsnisTemplate/$templateId'),
+        headers: h,
+      ),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load template files');
     }
     return jsonDecode(res.body) as List<dynamic>;
   }
@@ -476,13 +572,56 @@ class Api {
     return jsonDecode(body) as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> uploadPrisegtasFailasToZingsnisTemplate({
+    required int templateId,
+    required String fileName,
+    String? filePath,
+    List<int>? bytes,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/api/prisegtasfailas/uploadTemplate/$templateId',
+    );
+
+    Future<http.StreamedResponse> sendOnce() async {
+      final req = http.MultipartRequest('POST', uri);
+      final headers = await _headers();
+      req.headers.addAll(headers);
+
+      if (bytes != null) {
+        req.files.add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
+      } else if (filePath != null) {
+        req.files.add(await http.MultipartFile.fromPath('file', filePath, filename: fileName));
+      } else {
+        throw ArgumentError('Either bytes or filePath must be provided');
+      }
+
+      return req.send();
+    }
+
+    var streamed = await sendOnce();
+    if (streamed.statusCode == 401) {
+      await AuthService.instance.refreshTokens();
+      streamed = await sendOnce();
+      if (streamed.statusCode == 401) {
+        await AuthService.instance.logout();
+      }
+    }
+
+    final body = await streamed.stream.bytesToString();
+    if (streamed.statusCode != 201) {
+      throw Exception('Failed to upload template image (${streamed.statusCode}): $body');
+    }
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
   // ZingsnisTemplate
   static Future<List<dynamic>> fetchZingsnisTemplates() async {
     final res = await _requestWithRefresh(
       (h) => http.get(Uri.parse('$baseUrl/api/zingsnistemplate'), headers: h),
     );
-    if (res.statusCode != 200)
+    if (res.statusCode != 200) {
       throw Exception('Failed to load zingsnis templates');
+    }
     return jsonDecode(res.body) as List<dynamic>;
   }
 
@@ -497,8 +636,9 @@ class Api {
         body: jsonEncode(payload),
       );
     });
-    if (res.statusCode != 201)
+    if (res.statusCode != 201) {
       throw Exception('Failed to create zingsnis template');
+    }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
@@ -514,8 +654,9 @@ class Api {
         body: jsonEncode(payload),
       );
     });
-    if (res.statusCode != 204)
+    if (res.statusCode != 204) {
       throw Exception('Failed to update zingsnis template');
+    }
   }
 
   static Future<void> deleteZingsnisTemplate(int id) async {
@@ -525,8 +666,9 @@ class Api {
         headers: h,
       ),
     );
-    if (res.statusCode != 204)
+    if (res.statusCode != 204) {
       throw Exception('Failed to delete zingsnis template');
+    }
   }
 
   // Zingsnis (vykdymas)

@@ -4,6 +4,7 @@ import 'pages/lokacijos_page.dart';
 import 'pages/sablonai_page.dart';
 import 'pages/testai_page.dart';
 import 'pages/login_page.dart';
+import 'pages/paskyra_page.dart';
 import 'services/auth_service.dart';
 import 'widgets/app_scaffold.dart';
 import 'widgets/auth_guard.dart';
@@ -19,7 +20,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Brand/contrast leaning: a stronger seed and slightly increased contrast.
     const seed = Colors.teal;
     final scheme = ColorScheme.fromSeed(
       seedColor: seed,
@@ -95,6 +95,8 @@ class MyApp extends StatelessWidget {
             ? const MainPage()
             : const LoginPage(),
         '/': (_) => const AuthGuard(protectedRoute: '/', child: MainPage()),
+        '/paskyra': (_) =>
+          const AuthGuard(protectedRoute: '/paskyra', child: PaskyraPage()),
         '/irasai': (_) =>
             const AuthGuard(protectedRoute: '/irasai', child: IrasaiPage()),
         '/testai': (_) =>
@@ -113,7 +115,7 @@ class MyApp extends StatelessWidget {
 class MainPage extends StatelessWidget {
   const MainPage({super.key});
 
-  Widget _ActionTile({
+  Widget _actionTile({
     required BuildContext context,
     required IconData icon,
     required String title,
@@ -225,7 +227,7 @@ class MainPage extends StatelessWidget {
             Card(
               child: Column(
                 children: [
-                  _ActionTile(
+                  _actionTile(
                     context: context,
                     icon: Icons.article_outlined,
                     title: 'Peržiūrėti įrašus',
@@ -233,7 +235,7 @@ class MainPage extends StatelessWidget {
                     onTap: () => Navigator.of(context).pushNamed('/irasai'),
                   ),
                   const Divider(height: 1),
-                  _ActionTile(
+                  _actionTile(
                     context: context,
                     icon: Icons.science_outlined,
                     title: 'Peržiūrėti testus',

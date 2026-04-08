@@ -36,8 +36,7 @@ class Irasas {
         'idDokumento': idDokumento,
         'pavadinimas': pavadinimas,
         'pradzia': pradzia.toUtc().toIso8601String(),
-        'pabaiga': pabaiga == null ? null : pabaiga!.toUtc().toIso8601String(),
-      // `statusas` is computed server-side.
+        'pabaiga': pabaiga?.toUtc().toIso8601String(),
       'lokacijaId': lokacijaId,
       };
 }
