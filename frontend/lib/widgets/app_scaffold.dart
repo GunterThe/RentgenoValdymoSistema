@@ -25,12 +25,19 @@ class AppScaffold extends StatelessWidget {
   });
 
   List<Widget> _defaultActions(BuildContext context) {
+    final isAdmin = AuthService.instance.isAdmin;
     return [
       IconButton(
         tooltip: 'Paskyra',
         onPressed: () => Navigator.of(context).pushNamed('/paskyra'),
         icon: const Icon(Icons.person_outline),
       ),
+      if (isAdmin)
+        IconButton(
+          tooltip: 'Žinutės',
+          onPressed: () => Navigator.of(context).pushNamed('/zinutes'),
+          icon: const Icon(Icons.markunread_outlined),
+        ),
       IconButton(
         tooltip: 'Atsijungti',
         onPressed: () async {
@@ -44,17 +51,7 @@ class AppScaffold extends StatelessWidget {
         tooltip: 'Testai',
         onPressed: () => Navigator.of(context).pushNamed('/testai'),
         icon: const Icon(Icons.list_alt),
-      ),
-      IconButton(
-        tooltip: 'Supakavimas',
-        onPressed: () => showPlaceholder(context, 'Supakavimas'),
-        icon: const Icon(Icons.inventory_2_outlined),
-      ),
-      IconButton(
-        tooltip: 'Išvežimas',
-        onPressed: () => showPlaceholder(context, 'Išvežimas'),
-        icon: const Icon(Icons.local_shipping_outlined),
-      ),
+      )
     ];
   }
 

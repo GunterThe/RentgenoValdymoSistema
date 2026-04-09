@@ -1,0 +1,22 @@
+**/.git
+**/.vscode
+**/.idea
+**/*.user
+**/*.suo
+
+# .NET
+**/bin
+**/obj
+
+# Flutter/Dart
+frontend/build
+frontend/.dart_tool
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.packages
+
+# Node (if present)
+**/node_modules
+
+# OS
+**/.DS_Store

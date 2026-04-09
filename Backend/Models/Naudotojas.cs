@@ -44,5 +44,7 @@ namespace Backend.Models
 
         [JsonIgnore]
         public List<RefreshToken> RefreshToken { get; set; } = new List<RefreshToken>();
+        [JsonIgnore]
+        public ICollection<NaudotojasZinute> Zinutes { get; set; } = new List<NaudotojasZinute>();
     }
 }

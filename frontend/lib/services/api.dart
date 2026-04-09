@@ -43,6 +43,99 @@ class Api {
     return Uri.parse('$baseUrl/api/prisegtasfailas/download/$id');
   }
 
+  // Žinutės
+  static Future<Map<String, dynamic>> sendMessageToAdmins({
+    required String tekstas,
+  }) async {
+    final t = tekstas.trim();
+    if (t.isEmpty) {
+      throw Exception('Tekstas yra būtinas');
+    }
+
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(
+        Uri.parse('$baseUrl/api/Zinute/sendToAdmins'),
+        headers: headers,
+        body: jsonEncode({'tekstas': t}),
+      );
+    });
+
+    if (res.statusCode != 201) {
+      throw Exception(
+        'Failed to send message (${res.statusCode}): ${res.body}',
+      );
+    }
+
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<List<dynamic>> fetchZinutes() async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(Uri.parse('$baseUrl/api/Zinute'), headers: h),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load zinutes (${res.statusCode})');
+    }
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<List<dynamic>> fetchMyInboxZinutes() async {
+    final res = await _requestWithRefresh(
+      (h) =>
+          http.get(Uri.parse('$baseUrl/api/NaudotojasZinute/my'), headers: h),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load inbox (${res.statusCode})');
+    }
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<void> markInboxZinuteRead({
+    required int zinuteId,
+    required bool perskaityta,
+  }) async {
+    final userId = AuthService.instance.currentUserId;
+    if (userId == null || userId.isEmpty) {
+      throw Exception('Missing current user id');
+    }
+
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(
+        Uri.parse('$baseUrl/api/NaudotojasZinute/$userId/$zinuteId'),
+        headers: headers,
+        body: jsonEncode({'perskaityta': perskaityta}),
+      );
+    });
+
+    if (res.statusCode != 204) {
+      throw Exception(
+        'Failed to update inbox item (${res.statusCode}): ${res.body}',
+      );
+    }
+  }
+
+  static Future<void> deleteInboxZinute({required int zinuteId}) async {
+    final userId = AuthService.instance.currentUserId;
+    if (userId == null || userId.isEmpty) {
+      throw Exception('Missing current user id');
+    }
+
+    final res = await _requestWithRefresh(
+      (h) => http.delete(
+        Uri.parse('$baseUrl/api/NaudotojasZinute/$userId/$zinuteId'),
+        headers: h,
+      ),
+    );
+
+    if (res.statusCode != 204) {
+      throw Exception(
+        'Failed to delete inbox item (${res.statusCode}): ${res.body}',
+      );
+    }
+  }
+
   // Naudotojai
   static Future<Map<String, dynamic>> fetchNaudotojas(String id) async {
     final res = await _requestWithRefresh(
@@ -87,7 +180,9 @@ class Api {
     });
 
     if (res.statusCode != 201) {
-      throw Exception('Failed to create naudotojas (${res.statusCode}): ${res.body}');
+      throw Exception(
+        'Failed to create naudotojas (${res.statusCode}): ${res.body}',
+      );
     }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
@@ -134,9 +229,7 @@ class Api {
     }
   }
 
-  static Future<void> superAdminToggleAdmin({
-    required String userId,
-  }) async {
+  static Future<void> superAdminToggleAdmin({required String userId}) async {
     final res = await _requestWithRefresh((h) {
       return http.put(
         Uri.parse('$baseUrl/api/Naudotojas/toggleAdmin/$userId'),
@@ -530,7 +623,9 @@ class Api {
   ) async {
     final res = await _requestWithRefresh(
       (h) => http.get(
-        Uri.parse('$baseUrl/api/prisegtasfailas/byZingsnisTemplate/$templateId'),
+        Uri.parse(
+          '$baseUrl/api/prisegtasfailas/byZingsnisTemplate/$templateId',
+        ),
         headers: h,
       ),
     );
@@ -604,9 +699,17 @@ class Api {
       req.headers.addAll(headers);
 
       if (bytes != null) {
-        req.files.add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
+        req.files.add(
+          http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+        );
       } else if (filePath != null) {
-        req.files.add(await http.MultipartFile.fromPath('file', filePath, filename: fileName));
+        req.files.add(
+          await http.MultipartFile.fromPath(
+            'file',
+            filePath,
+            filename: fileName,
+          ),
+        );
       } else {
         throw ArgumentError('Either bytes or filePath must be provided');
       }
@@ -625,7 +728,9 @@ class Api {
 
     final body = await streamed.stream.bytesToString();
     if (streamed.statusCode != 201) {
-      throw Exception('Failed to upload template image (${streamed.statusCode}): $body');
+      throw Exception(
+        'Failed to upload template image (${streamed.statusCode}): $body',
+      );
     }
     return jsonDecode(body) as Map<String, dynamic>;
   }

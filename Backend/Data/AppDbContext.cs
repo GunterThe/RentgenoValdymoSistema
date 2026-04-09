@@ -23,6 +23,8 @@ namespace Backend.Data
         public DbSet<Lokacija> Lokacijos { get; set; } = null!;
         public DbSet<Sablonas> Sablonai { get; set; } = null!;
         public DbSet<SablonasTestas> SablonasTestai { get; set; } = null!;
+        public DbSet<Zinute> Zinutes { get; set; } = null!;
+        public DbSet<NaudotojasZinute> NaudotojasZinute { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -43,6 +45,21 @@ namespace Backend.Data
                 .HasOne(st => st.Testas)
                 .WithMany(t => t.Sablonai)
                 .HasForeignKey(st => st.Testasid)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<NaudotojasZinute>()
+                .HasKey(nz => new { nz.Naudotojasid, nz.Zinuteid });
+            
+            modelBuilder.Entity<NaudotojasZinute>()
+                .HasOne(nz => nz.Naudotojas)
+                .WithMany(n => n.Zinutes)
+                .HasForeignKey(nz => nz.Naudotojasid)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<NaudotojasZinute>()
+                .HasOne(nz => nz.Zinute)
+                .WithMany(z => z.Naudotojai)
+                .HasForeignKey(nz => nz.Zinuteid)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Testas>()
