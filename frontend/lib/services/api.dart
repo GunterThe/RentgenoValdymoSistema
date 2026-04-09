@@ -134,6 +134,22 @@ class Api {
     }
   }
 
+  static Future<void> superAdminToggleAdmin({
+    required String userId,
+  }) async {
+    final res = await _requestWithRefresh((h) {
+      return http.put(
+        Uri.parse('$baseUrl/api/Naudotojas/toggleAdmin/$userId'),
+        headers: h,
+      );
+    });
+    if (res.statusCode != 204) {
+      throw Exception(
+        'Failed to toggle admin (${res.statusCode}): ${res.body}',
+      );
+    }
+  }
+
   // Irašai
   static Future<List<dynamic>> fetchIrasai() async {
     final res = await _requestWithRefresh(

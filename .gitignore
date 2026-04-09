@@ -167,6 +167,7 @@ nCrunchTemp_*
 # MightyMoose
 *.mm.*
 AutoTest.Net/
+.vscode
 
 # Web workbench (sass)
 .sass-cache/

@@ -66,6 +66,8 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy =>
         policy.RequireClaim("admin", bool.TrueString));
+    options.AddPolicy("SuperAdminOnly", policy =>
+        policy.RequireClaim("superadmin", bool.TrueString));
 });
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));

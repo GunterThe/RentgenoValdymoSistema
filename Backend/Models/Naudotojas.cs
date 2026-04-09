@@ -38,7 +38,10 @@ namespace Backend.Models
         [Required]
         [Column("prisijungimoid")]
         public string PrisijungimoId { get; set; } = null!;
-        
+
+        [Column("super_adminas")]
+        public bool SuperAdminas { get; set; } = false;
+
         [JsonIgnore]
         public List<RefreshToken> RefreshToken { get; set; } = new List<RefreshToken>();
     }

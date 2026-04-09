@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict jxMYdHdkmgPNRTYYh0IovgtFUL7bnU6GrXhviIsBHYdwuLPqddpcZQ0GHvI0pSA
+\restrict GT9z8HDXOi7iO6R4CSt3fXgCojlUMAXqfsGmecQnaCIZPO7yCgkmdue8RPJ5Fun
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
 
--- Started on 2026-04-08 13:15:31 EEST
+-- Started on 2026-04-09 13:48:14 EEST
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -139,7 +139,8 @@ CREATE TABLE public.naudotojas (
     gimimo_data date NOT NULL,
     adminas boolean DEFAULT false NOT NULL,
     password_hash character varying(200) NOT NULL,
-    prisijungimoid text
+    prisijungimoid text,
+    super_adminas boolean
 );
 
 
@@ -399,9 +400,11 @@ COPY public.lokacija (id, pavadinimas) FROM stdin;
 -- Data for Name: naudotojas; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.naudotojas (id, vardas, pavarde, gimimo_data, adminas, password_hash, prisijungimoid) FROM stdin;
-3fa85f64-5717-4562-b3fc-2c963f66afa6	Jonas	Jonaitis	2026-02-21	t	$2a$11$MirpBys88FNoulE9ZNSB7OCLe7090D7JGj3hNsrNf9Y0sXVXl0Iu2	jonas.jonaitis.3f25d9
-811e41c3-49b7-4496-8f72-a4bcdb53d405	Petras	Petraitis	2026-02-21	f	$2a$11$IXFRcEd.VMKt2TmHkWMjbuLxxCgI3GOGmHhhXi..d/wUHVmKctQWC	petras.petraitis.8a192e
+COPY public.naudotojas (id, vardas, pavarde, gimimo_data, adminas, password_hash, prisijungimoid, super_adminas) FROM stdin;
+a88fdd28-7be1-4c55-9b76-cf8f6d14410d	Gitanas	Nauseda	2026-04-08	f	$2a$11$hn2iio2OWlaVrBWiQUUrE.1oD5OKSZtrWk2Q5TH8yJHsxOu8FCYdW	gitanas.nauseda.e92	f
+3fa85f64-5717-4562-b3fc-2c963f66afa6	Jonas	Jonaitis	2026-02-21	t	$2a$11$XOluA5qHy5wV7Y.twmVgLOjO3EvrsWAfk2ypmioAk1D0T.SWoEJjS	jonas.jonaitis.3f25d9	t
+b9d2cadb-89a2-47f2-9a4a-cc87d1e850a5	jo	jo	2008-04-01	t	$2a$11$DowJr28AAMD75jQbmqgdy.ptJJorPzod5dMk.th37crlk.jwkkuie	jo.jo.33b	f
+811e41c3-49b7-4496-8f72-a4bcdb53d405	Petras	Petraitis	2026-02-21	f	$2a$11$VfBvXJOKJSMvJ0rIpBLWleootCif2MfvYgVgQoZnceHcd3d/s0STm	petras.petraitis.8a192e	f
 \.
 
 
@@ -415,6 +418,7 @@ COPY public.prisegtasfailas (id, failopav, dydis, nuoroda, sukurimolaikas, zings
 0695d72a-e7fe-4380-906e-156162ead170	agemasen (1).png	26567	uploads/57b62e5e-ce1d-43f5-a446-2b17c973e24f.png	2026-02-21	\N	\N
 a84018ad-0b7a-4f9f-baba-e3bcead71a8a	buh2.png	2756095	uploads/17f54280-abf1-4b9c-beef-61efa6a90917.png	2026-04-08	15	\N
 13998cd4-6106-4065-9e88-f342f9ff7118	buh2.png	2756095	uploads/02675a60-f0c3-4004-9c2a-185107304a7e.png	2026-04-08	17	\N
+108a3542-6468-4260-af36-185c4dc38a30	WHAT.png	585004	uploads/templates/3e2e4ee9-e7b9-4c2b-a438-97fba9c9138b.png	2026-04-08	\N	21
 \.
 
 
@@ -776,11 +780,11 @@ ALTER TABLE ONLY public.testasirasas
     ADD CONSTRAINT testasirasas_testasid_fkey FOREIGN KEY (testasid) REFERENCES public.testas(id) ON DELETE CASCADE;
 
 
--- Completed on 2026-04-08 13:15:31 EEST
+-- Completed on 2026-04-09 13:48:14 EEST
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict jxMYdHdkmgPNRTYYh0IovgtFUL7bnU6GrXhviIsBHYdwuLPqddpcZQ0GHvI0pSA
+\unrestrict GT9z8HDXOi7iO6R4CSt3fXgCojlUMAXqfsGmecQnaCIZPO7yCgkmdue8RPJ5Fun
 

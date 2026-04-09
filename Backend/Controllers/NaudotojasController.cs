@@ -58,11 +58,23 @@ namespace Backend.Controllers
             return null;
         }
 
+        private static DateTime EnsureUtc(DateTime dt)
+        {
+            return dt.Kind switch
+            {
+                DateTimeKind.Utc => dt,
+                DateTimeKind.Local => dt.ToUniversalTime(),
+                DateTimeKind.Unspecified => DateTime.SpecifyKind(dt, DateTimeKind.Local).ToUniversalTime(),
+                _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+            };
+        }
+
         private bool IsAdmin() => User.HasClaim("admin", bool.TrueString);
+
+        private bool IsSuperAdmin() => User.HasClaim("superadmin", bool.TrueString);
 
         private static bool IsPasswordAcceptable(string password)
         {
-            // Minimal policy: non-empty and at least 6 chars.
             return !string.IsNullOrWhiteSpace(password) && password.Trim().Length >= 6;
         }
 
@@ -108,6 +120,7 @@ namespace Backend.Controllers
         [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<NaudotojasListItem>> Create([FromBody] CreateUserRequest req)
         {
+            var canCreateAdmin = IsSuperAdmin();
             var vardas = (req.Vardas ?? string.Empty).Trim();
             var pavarde = (req.Pavarde ?? string.Empty).Trim();
             var password = (req.Password ?? string.Empty).Trim();
@@ -129,8 +142,8 @@ namespace Backend.Controllers
                 Id = Guid.NewGuid(),
                 Vardas = vardas,
                 Pavarde = pavarde,
-                GimimoData = req.GimimoData.Date,
-                Adminas = req.Adminas,
+                GimimoData = EnsureUtc(req.GimimoData.Date),
+                Adminas = canCreateAdmin && req.Adminas,
                 PrisijungimoId = prisijungimoId,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password)
             };
@@ -168,13 +181,20 @@ namespace Backend.Controllers
                 return Unauthorized(new { message = "Invalid user context" });
             }
 
-            if (!IsAdmin() && id != currentUserId.Value)
+            var isSuperAdmin = IsSuperAdmin();
+            if (!IsAdmin() && !isSuperAdmin && id != currentUserId.Value)
             {
                 return Forbid();
             }
 
             var user = await _db.Naudotojai.FindAsync(id);
             if (user == null) return NotFound();
+
+            // Admins can’t change other admins’ passwords (unless superadmin).
+            if (!isSuperAdmin && id != currentUserId.Value && user.Adminas)
+            {
+                return Forbid();
+            }
 
             var currentPassword = (req.CurrentPassword ?? string.Empty).Trim();
             var newPassword = (req.NewPassword ?? string.Empty).Trim();
@@ -202,6 +222,12 @@ namespace Backend.Controllers
         [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> AdminSetPassword(Guid id, [FromBody] AdminSetPasswordRequest req)
         {
+            var currentUserId = TryGetCurrentUserId();
+            if (currentUserId == null)
+            {
+                return Unauthorized(new { message = "Invalid user context" });
+            }
+
             var newPassword = (req.NewPassword ?? string.Empty).Trim();
             if (!IsPasswordAcceptable(newPassword))
             {
@@ -211,12 +237,30 @@ namespace Backend.Controllers
             var user = await _db.Naudotojai.FindAsync(id);
             if (user == null) return NotFound();
 
+            // Admins can’t reset other admins’ passwords (unless superadmin).
+            if (!IsSuperAdmin() && id != currentUserId.Value && user.Adminas)
+            {
+                return Forbid();
+            }
+
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
             await RevokeAllRefreshTokens(user.Id);
             await _db.SaveChangesAsync();
             return NoContent();
         }
 
+        [HttpPut("toggleAdmin/{id:guid}")]    
+        [Authorize(Policy = "SuperAdminOnly")]
+        public async Task<IActionResult> ToggleAdmin(Guid id)
+        {
+            var user = await _db.Naudotojai.FindAsync(id);
+            if (user == null) return NotFound();
+
+            user.Adminas = !user.Adminas;
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+        
         [HttpDelete("{id}")]
         [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Delete(Guid id)

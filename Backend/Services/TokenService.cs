@@ -30,7 +30,8 @@ public class TokenService : ITokenService
             new Claim(JwtRegisteredClaimNames.Email, user.PrisijungimoId),
             new Claim("vardas", user.Vardas),
             new Claim("pavarde", user.Pavarde),
-            new Claim("admin", user.Adminas.ToString())
+            new Claim("admin", user.Adminas.ToString()),
+            new Claim("superadmin", user.SuperAdminas.ToString())
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));

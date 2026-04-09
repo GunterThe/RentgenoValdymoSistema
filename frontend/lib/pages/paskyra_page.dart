@@ -24,11 +24,12 @@ class _PaskyraPageState extends State<PaskyraPage> {
   bool _loadingUsers = false;
 
   bool get _isAdmin => AuthService.instance.isAdmin;
+  bool get _isSuperAdmin => AuthService.instance.isSuperAdmin;
 
   @override
   void initState() {
     super.initState();
-    if (_isAdmin) {
+    if (_isAdmin || _isSuperAdmin) {
       _loadUsers();
     }
   }
@@ -46,7 +47,7 @@ class _PaskyraPageState extends State<PaskyraPage> {
   }
 
   Future<void> _loadUsers() async {
-    if (!_isAdmin) return;
+    if (!_isAdmin && !_isSuperAdmin) return;
     if (_loadingUsers) return;
 
     setState(() => _loadingUsers = true);
@@ -61,7 +62,18 @@ class _PaskyraPageState extends State<PaskyraPage> {
 
       setState(() {
         _users = users;
-        _selectedUserId = users.isEmpty ? null : (users.first.id);
+        final current = _selectedUserId;
+        if (current != null && users.any((u) => u.id == current)) {
+          _selectedUserId = current;
+        } else {
+          if (!_isSuperAdmin) {
+            final firstNonAdmin = users.where((u) => u.adminas != true).toList();
+            _selectedUserId =
+                firstNonAdmin.isEmpty ? (users.isEmpty ? null : users.first.id) : firstNonAdmin.first.id;
+          } else {
+            _selectedUserId = users.isEmpty ? null : (users.first.id);
+          }
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -122,7 +134,7 @@ class _PaskyraPageState extends State<PaskyraPage> {
   }
 
   Future<void> _ensureUsersLoaded() async {
-    if (!_isAdmin) return;
+    if (!_isAdmin && !_isSuperAdmin) return;
     if (_users.isNotEmpty) return;
     await _loadUsers();
   }
@@ -133,7 +145,14 @@ class _PaskyraPageState extends State<PaskyraPage> {
 
     final pw1 = TextEditingController();
     final pw2 = TextEditingController();
-    var selected = _selectedUserId;
+    final selectableUsers = _isSuperAdmin
+        ? _users
+        : _users.where((u) => u.adminas != true).toList();
+
+    String? selected = _selectedUserId;
+    if (selected == null || selectableUsers.every((u) => u.id != selected)) {
+      selected = selectableUsers.isEmpty ? null : selectableUsers.first.id;
+    }
     var busy = false;
     StateSetter? setStateDialogRef;
     var closing = false;
@@ -201,26 +220,29 @@ class _PaskyraPageState extends State<PaskyraPage> {
                     padding: EdgeInsets.only(bottom: 10),
                     child: LinearProgressIndicator(),
                   ),
-                DropdownButtonFormField<String>(
-                  initialValue: selected,
-                  items: _users
-                      .map(
-                        (u) => DropdownMenuItem(
-                          value: u.id,
-                          child: Text(u.displayLabel),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: busy
-                      ? null
-                      : (v) {
-                          setStateDialog(() => selected = v);
-                        },
-                  decoration: const InputDecoration(
-                    labelText: 'Naudotojas',
-                    border: OutlineInputBorder(),
+                if (selectableUsers.isEmpty)
+                  const Text('Nėra naudotojų, kuriems galima keisti slaptažodį')
+                else
+                  DropdownButtonFormField<String>(
+                    initialValue: selected,
+                    items: selectableUsers
+                        .map(
+                          (u) => DropdownMenuItem(
+                            value: u.id,
+                            child: Text(u.displayLabel),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: busy
+                        ? null
+                        : (v) {
+                            setStateDialog(() => selected = v);
+                          },
+                    decoration: const InputDecoration(
+                      labelText: 'Naudotojas',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: pw1,
@@ -264,6 +286,134 @@ class _PaskyraPageState extends State<PaskyraPage> {
 
     pw1.dispose();
     pw2.dispose();
+  }
+
+  Future<void> _showSuperAdminToggleAdminDialog() async {
+    if (!_isSuperAdmin) return;
+    await _ensureUsersLoaded();
+
+    var selected = _selectedUserId;
+    var busy = false;
+    StateSetter? setStateDialogRef;
+    var closing = false;
+
+    Future<void> submit(StateSetter setStateDialog) async {
+      final targetUserId = selected;
+      if (targetUserId == null || targetUserId.isEmpty) {
+        _snack('Pasirinkite naudotoją');
+        return;
+      }
+
+      setStateDialog(() => busy = true);
+      try {
+        await Api.superAdminToggleAdmin(userId: targetUserId);
+
+        await _loadUsers();
+
+        if (!mounted) {
+          closing = true;
+          return;
+        }
+        setState(() => _selectedUserId = targetUserId);
+
+        closing = true;
+        Navigator.of(context).pop();
+        _snack('Administratoriaus teisės atnaujintos');
+      } catch (e) {
+        if (!mounted) {
+          closing = true;
+          return;
+        }
+        _snack('Nepavyko pakeisti admin teisių: $e');
+      } finally {
+        if (!closing) {
+          setStateDialog(() => busy = false);
+        }
+      }
+    }
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Administratoriaus teisės'),
+        content: StatefulBuilder(
+          builder: (ctx, setStateDialog) {
+            setStateDialogRef = setStateDialog;
+
+            Naudotojas? selectedUser;
+            final selectedId = selected;
+            if (selectedId != null && selectedId.isNotEmpty) {
+              for (final u in _users) {
+                if (u.id == selectedId) {
+                  selectedUser = u;
+                  break;
+                }
+              }
+            }
+            final isAdminNow = selectedUser?.adminas;
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_loadingUsers)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: LinearProgressIndicator(),
+                  ),
+                DropdownButtonFormField<String>(
+                  initialValue: selected,
+                  items: _users
+                      .map(
+                        (u) => DropdownMenuItem(
+                          value: u.id,
+                          child: Text(u.displayLabel),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: busy
+                      ? null
+                      : (v) {
+                          setStateDialog(() => selected = v);
+                        },
+                  decoration: const InputDecoration(
+                    labelText: 'Naudotojas',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                if (isAdminNow != null) ...[
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      isAdminNow
+                          ? 'Dabartinė būsena: administratorius'
+                          : 'Dabartinė būsena: naudotojas',
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: busy ? null : () => Navigator.of(ctx).pop(),
+            child: const Text('Atšaukti'),
+          ),
+          FilledButton(
+            onPressed: busy
+                ? null
+                : () {
+                    final s = setStateDialogRef;
+                    if (s == null) return;
+                    submit(s);
+                  },
+            child: Text(busy ? 'Vykdoma...' : 'Perjungti'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showAdminCreateUserDialog() async {
@@ -326,7 +476,7 @@ class _PaskyraPageState extends State<PaskyraPage> {
           vardas: vardas,
           pavarde: pavarde,
           gimimoData: gimimo!,
-          adminas: adminas,
+          adminas: _isSuperAdmin ? adminas : false,
           password: p1,
         );
 
@@ -402,15 +552,17 @@ class _PaskyraPageState extends State<PaskyraPage> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                SwitchListTile(
-                  value: adminas,
-                  onChanged: busy
-                      ? null
-                      : (v) => setStateDialog(() => adminas = v),
-                  title: const Text('Administratorius'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                const SizedBox(height: 4),
+                if (_isSuperAdmin) ...[
+                  SwitchListTile(
+                    value: adminas,
+                    onChanged: busy
+                        ? null
+                        : (v) => setStateDialog(() => adminas = v),
+                    title: const Text('Administratorius'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  const SizedBox(height: 4),
+                ],
                 TextField(
                   controller: pw1,
                   obscureText: true,
@@ -565,6 +717,23 @@ class _PaskyraPageState extends State<PaskyraPage> {
                 ),
               ),
             ),
+            if (_isSuperAdmin) ...[
+              const SizedBox(height: 12),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.admin_panel_settings_outlined),
+                  title: const Text(
+                    'Super administravimas',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: const Text('Perjungti naudotojo admin teises'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    await _showSuperAdminToggleAdminDialog();
+                  },
+                ),
+              ),
+            ],
             if (_isAdmin) ...[
               const SizedBox(height: 12),
               Card(

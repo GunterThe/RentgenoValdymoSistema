@@ -36,6 +36,13 @@ class AuthService extends ChangeNotifier {
     return admin.toLowerCase() == 'true';
   }
 
+  bool get isSuperAdmin {
+    final jwt = _tokens?.accessToken;
+    if (jwt == null || jwt.isEmpty) return false;
+    final superAdmin = (JwtUtils.tryGetClaim(jwt, 'superadmin') ?? '').trim();
+    return superAdmin.toLowerCase() == 'true';
+  }
+
   String get displayName {
     final jwt = _tokens?.accessToken;
     if (jwt == null || jwt.isEmpty) return '';
