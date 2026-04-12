@@ -191,7 +191,7 @@ class _LokacijosPageState extends State<LokacijosPage> {
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                          mainAxisSize: MainAxisSize.max,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             TextField(
@@ -210,68 +210,156 @@ class _LokacijosPageState extends State<LokacijosPage> {
                               onChanged: (v) => setState(() => _query = v),
                             ),
                             const SizedBox(height: 12),
-                            if (_items.isEmpty)
-                              Center(
-                                child: Text(
-                                  'Nėra lokacijų',
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              )
-                            else if (filteredItems.isEmpty)
-                              Center(
-                                child: Text(
-                                  'Nieko nerasta',
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              )
-                            else
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: SingleChildScrollView(
-                                  child: DataTable(
-                                    columns: const [
-                                      DataColumn(label: Text('Pavadinimas')),
-                                      DataColumn(label: Text('Veiksmai')),
-                                    ],
-                                    rows: filteredItems.map((it) {
-                                      return DataRow(
-                                        cells: [
-                                          DataCell(Text(it.pavadinimas)),
-                                          DataCell(
-                                            Row(
-                                              children: [
-                                                IconButton(
-                                                  tooltip: 'Redaguoti',
-                                                  onPressed: () =>
-                                                      _createOrEdit(
-                                                        existing: it,
+                            Expanded(
+                              child: _items.isEmpty
+                                  ? Center(
+                                      child: Text(
+                                        'Nėra lokacijų',
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    )
+                                  : filteredItems.isEmpty
+                                  ? Center(
+                                      child: Text(
+                                        'Nieko nerasta',
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    )
+                                  : LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final isNarrow =
+                                            constraints.maxWidth < 600;
+
+                                        if (isNarrow) {
+                                          return ListView.separated(
+                                            itemCount: filteredItems.length,
+                                            separatorBuilder: (_, __) =>
+                                                const SizedBox(height: 8),
+                                            itemBuilder: (ctx, index) {
+                                              final it = filteredItems[index];
+                                              return Card(
+                                                margin: EdgeInsets.zero,
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                        12,
+                                                        10,
+                                                        12,
+                                                        8,
                                                       ),
-                                                  icon: const Icon(Icons.edit),
-                                                ),
-                                                IconButton(
-                                                  tooltip: 'Ištrinti',
-                                                  onPressed: () => _delete(it),
-                                                  icon: const Icon(
-                                                    Icons.delete_outline,
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .stretch,
+                                                    children: [
+                                                      Text(
+                                                        it.pavadinimas,
+                                                        style:
+                                                            const TextStyle(
+                                                              fontSize: 16,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              letterSpacing:
+                                                                  0.1,
+                                                            ),
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      Wrap(
+                                                        alignment:
+                                                            WrapAlignment.end,
+                                                        children: [
+                                                          IconButton(
+                                                            tooltip:
+                                                                'Redaguoti',
+                                                            onPressed: () =>
+                                                                _createOrEdit(
+                                                                  existing: it,
+                                                                ),
+                                                            icon: const Icon(
+                                                              Icons.edit,
+                                                            ),
+                                                          ),
+                                                          IconButton(
+                                                            tooltip: 'Ištrinti',
+                                                            onPressed: () =>
+                                                                _delete(it),
+                                                            icon: const Icon(
+                                                              Icons
+                                                                  .delete_outline,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
+                                              );
+                                            },
+                                          );
+                                        }
+
+                                        return SingleChildScrollView(
+                                          scrollDirection: Axis.horizontal,
+                                          child: SingleChildScrollView(
+                                            child: DataTable(
+                                              columns: const [
+                                                DataColumn(
+                                                  label: Text('Pavadinimas'),
+                                                ),
+                                                DataColumn(
+                                                  label: Text('Veiksmai'),
+                                                ),
                                               ],
+                                              rows: filteredItems.map((it) {
+                                                return DataRow(
+                                                  cells: [
+                                                    DataCell(
+                                                      Text(it.pavadinimas),
+                                                    ),
+                                                    DataCell(
+                                                      Row(
+                                                        children: [
+                                                          IconButton(
+                                                            tooltip:
+                                                                'Redaguoti',
+                                                            onPressed: () =>
+                                                                _createOrEdit(
+                                                                  existing: it,
+                                                                ),
+                                                            icon: const Icon(
+                                                              Icons.edit,
+                                                            ),
+                                                          ),
+                                                          IconButton(
+                                                            tooltip: 'Ištrinti',
+                                                            onPressed: () =>
+                                                                _delete(it),
+                                                            icon: const Icon(
+                                                              Icons
+                                                                  .delete_outline,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                              }).toList(),
                                             ),
                                           ),
-                                        ],
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
-                              ),
+                                        );
+                                      },
+                                    ),
+                            ),
                           ],
                         ),
                       ),

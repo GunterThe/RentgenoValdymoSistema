@@ -863,153 +863,297 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                     ),
                                   ),
                                 )
-                              : SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: SingleChildScrollView(
-                                    child: DataTable(
-                                      sortColumnIndex: _sortColumnIndex,
-                                      sortAscending: _sortAscending,
-                                      columns: [
-                                        DataColumn(
-                                          label: const Text('Pavadinimas'),
-                                          onSort: (i, asc) => setState(() {
-                                            _sortColumnIndex = i;
-                                            _sortAscending = asc;
-                                          }),
-                                        ),
-                                        DataColumn(
-                                          label: const Text('Dokumento ID'),
-                                          onSort: (i, asc) => setState(() {
-                                            _sortColumnIndex = i;
-                                            _sortAscending = asc;
-                                          }),
-                                        ),
-                                        DataColumn(
-                                          label: const Text('Lokacija'),
-                                          onSort: (i, asc) => setState(() {
-                                            _sortColumnIndex = i;
-                                            _sortAscending = asc;
-                                          }),
-                                        ),
-                                        DataColumn(
-                                          label: const Text('Statusas'),
-                                          onSort: (i, asc) => setState(() {
-                                            _sortColumnIndex = i;
-                                            _sortAscending = asc;
-                                          }),
-                                        ),
-                                        DataColumn(
-                                          label: const Text('Pradžia'),
-                                          onSort: (i, asc) => setState(() {
-                                            _sortColumnIndex = i;
-                                            _sortAscending = asc;
-                                          }),
-                                        ),
-                                        DataColumn(
-                                          label: const Text('Pabaiga'),
-                                          onSort: (i, asc) => setState(() {
-                                            _sortColumnIndex = i;
-                                            _sortAscending = asc;
-                                          }),
-                                        ),
-                                        const DataColumn(
-                                          label: Text('Veiksmai'),
-                                        ),
-                                      ],
-                                      rows: shown.map((it) {
-                                        return DataRow(
-                                          cells: [
-                                            DataCell(Text(it.pavadinimas)),
-                                            DataCell(Text(it.idDokumento)),
-                                            DataCell(
-                                              Text(
-                                                _lokacijaName(it.lokacijaId),
-                                              ),
-                                            ),
-                                            DataCell(
-                                              Text(_prettyStatus(it.statusas)),
-                                            ),
-                                            DataCell(
-                                              Text(_fmtDate(it.pradzia)),
-                                            ),
-                                            DataCell(
-                                              Text(_fmtDate(it.pabaiga)),
-                                            ),
-                                            DataCell(
-                                              Row(
+                              : LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final isNarrow = constraints.maxWidth < 800;
+                                    final cs = Theme.of(context).colorScheme;
+
+                                    if (isNarrow) {
+                                      return ListView.separated(
+                                        itemCount: shown.length,
+                                        separatorBuilder: (_, __) =>
+                                            const SizedBox(height: 8),
+                                        itemBuilder: (ctx, index) {
+                                          final it = shown[index];
+                                          final status = _prettyStatus(it.statusas);
+                                          final lok = _lokacijaName(it.lokacijaId);
+                                          final pr = _fmtDate(it.pradzia);
+                                          final pb = _fmtDate(it.pabaiga);
+
+                                          return Card(
+                                            margin: EdgeInsets.zero,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                    12,
+                                                    10,
+                                                    12,
+                                                    8,
+                                                  ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
                                                 children: [
-                                                  IconButton(
-                                                    tooltip: 'Peržiūrėti',
-                                                    onPressed: () =>
-                                                        showPlaceholder(
-                                                          context,
-                                                          'Peržiūrėti įrašą',
+                                                  Text(
+                                                    it.pavadinimas,
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      letterSpacing: 0.1,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Text(
+                                                    'Dokumento ID: ${it.idDokumento}',
+                                                    style: TextStyle(
+                                                      color: cs.onSurfaceVariant,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    'Lokacija: $lok',
+                                                    style: TextStyle(
+                                                      color: cs.onSurfaceVariant,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    'Statusas: $status',
+                                                    style: TextStyle(
+                                                      color: cs.onSurfaceVariant,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    'Laikas: $pr – $pb',
+                                                    style: TextStyle(
+                                                      color: cs.onSurfaceVariant,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Wrap(
+                                                    alignment: WrapAlignment.end,
+                                                    children: [
+                                                      IconButton(
+                                                        tooltip: 'Peržiūrėti',
+                                                        onPressed: () =>
+                                                            showPlaceholder(
+                                                              context,
+                                                              'Peržiūrėti įrašą',
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .remove_red_eye_outlined,
                                                         ),
-                                                    icon: const Icon(
-                                                      Icons
-                                                          .remove_red_eye_outlined,
-                                                    ),
-                                                  ),
-                                                  IconButton(
-                                                    tooltip: 'Redaguoti',
-                                                    onPressed: () =>
-                                                        _editIrasas(it),
-                                                    icon: const Icon(
-                                                      Icons.edit,
-                                                    ),
-                                                  ),
-                                                  IconButton(
-                                                    tooltip: 'Pridėti testą',
-                                                    onPressed: () =>
-                                                        _addTestToIrasas(it),
-                                                    icon: const Icon(
-                                                      Icons.playlist_add,
-                                                    ),
-                                                  ),
-                                                  IconButton(
-                                                    tooltip: 'Pašalinti testą',
-                                                    onPressed: () =>
-                                                        _removeTestFromIrasas(
-                                                          it,
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Redaguoti',
+                                                        onPressed: () =>
+                                                            _editIrasas(it),
+                                                        icon: const Icon(
+                                                          Icons.edit,
                                                         ),
-                                                    icon: const Icon(
-                                                      Icons.playlist_remove,
-                                                    ),
-                                                  ),
-                                                  IconButton(
-                                                    tooltip: 'Žingsniai',
-                                                    onPressed: () =>
-                                                        Navigator.of(
-                                                          context,
-                                                        ).push(
+                                                      ),
+                                                      IconButton(
+                                                        tooltip:
+                                                            'Pridėti testą',
+                                                        onPressed: () =>
+                                                            _addTestToIrasas(it),
+                                                        icon: const Icon(
+                                                          Icons.playlist_add,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip:
+                                                            'Pašalinti testą',
+                                                        onPressed: () =>
+                                                            _removeTestFromIrasas(
+                                                              it,
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .playlist_remove,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Žingsniai',
+                                                        onPressed: () =>
+                                                            Navigator.of(context)
+                                                                .push(
                                                           MaterialPageRoute(
                                                             builder: (_) =>
                                                                 IrasasZingsniaiPage(
-                                                                  irasas: it,
-                                                                ),
+                                                              irasas: it,
+                                                            ),
                                                           ),
                                                         ),
-                                                    icon: const Icon(
-                                                      Icons
-                                                          .format_list_numbered,
-                                                    ),
-                                                  ),
-                                                  IconButton(
-                                                    tooltip: 'Ištrinti',
-                                                    onPressed: () =>
-                                                        _deleteIrasas(it),
-                                                    icon: const Icon(
-                                                      Icons.delete_outline,
-                                                    ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .format_list_numbered,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Ištrinti',
+                                                        onPressed: () =>
+                                                            _deleteIrasas(it),
+                                                        icon: const Icon(
+                                                          Icons.delete_outline,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ],
                                               ),
                                             ),
+                                          );
+                                        },
+                                      );
+                                    }
+
+                                    return SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: SingleChildScrollView(
+                                        child: DataTable(
+                                          sortColumnIndex: _sortColumnIndex,
+                                          sortAscending: _sortAscending,
+                                          columns: [
+                                            DataColumn(
+                                              label: const Text('Pavadinimas'),
+                                              onSort: (i, asc) => setState(() {
+                                                _sortColumnIndex = i;
+                                                _sortAscending = asc;
+                                              }),
+                                            ),
+                                            DataColumn(
+                                              label: const Text('Dokumento ID'),
+                                              onSort: (i, asc) => setState(() {
+                                                _sortColumnIndex = i;
+                                                _sortAscending = asc;
+                                              }),
+                                            ),
+                                            DataColumn(
+                                              label: const Text('Lokacija'),
+                                              onSort: (i, asc) => setState(() {
+                                                _sortColumnIndex = i;
+                                                _sortAscending = asc;
+                                              }),
+                                            ),
+                                            DataColumn(
+                                              label: const Text('Statusas'),
+                                              onSort: (i, asc) => setState(() {
+                                                _sortColumnIndex = i;
+                                                _sortAscending = asc;
+                                              }),
+                                            ),
+                                            DataColumn(
+                                              label: const Text('Pradžia'),
+                                              onSort: (i, asc) => setState(() {
+                                                _sortColumnIndex = i;
+                                                _sortAscending = asc;
+                                              }),
+                                            ),
+                                            DataColumn(
+                                              label: const Text('Pabaiga'),
+                                              onSort: (i, asc) => setState(() {
+                                                _sortColumnIndex = i;
+                                                _sortAscending = asc;
+                                              }),
+                                            ),
+                                            const DataColumn(
+                                              label: Text('Veiksmai'),
+                                            ),
                                           ],
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ),
+                                          rows: shown.map((it) {
+                                            return DataRow(
+                                              cells: [
+                                                DataCell(Text(it.pavadinimas)),
+                                                DataCell(Text(it.idDokumento)),
+                                                DataCell(
+                                                  Text(_lokacijaName(it.lokacijaId)),
+                                                ),
+                                                DataCell(
+                                                  Text(_prettyStatus(it.statusas)),
+                                                ),
+                                                DataCell(Text(_fmtDate(it.pradzia))),
+                                                DataCell(Text(_fmtDate(it.pabaiga))),
+                                                DataCell(
+                                                  Row(
+                                                    children: [
+                                                      IconButton(
+                                                        tooltip: 'Peržiūrėti',
+                                                        onPressed: () =>
+                                                            showPlaceholder(
+                                                              context,
+                                                              'Peržiūrėti įrašą',
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .remove_red_eye_outlined,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Redaguoti',
+                                                        onPressed: () =>
+                                                            _editIrasas(it),
+                                                        icon: const Icon(
+                                                          Icons.edit,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip:
+                                                            'Pridėti testą',
+                                                        onPressed: () =>
+                                                            _addTestToIrasas(it),
+                                                        icon: const Icon(
+                                                          Icons.playlist_add,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip:
+                                                            'Pašalinti testą',
+                                                        onPressed: () =>
+                                                            _removeTestFromIrasas(
+                                                              it,
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .playlist_remove,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Žingsniai',
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                              context,
+                                                            ).push(
+                                                              MaterialPageRoute(
+                                                                builder: (_) =>
+                                                                    IrasasZingsniaiPage(
+                                                                  irasas: it,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .format_list_numbered,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Ištrinti',
+                                                        onPressed: () =>
+                                                            _deleteIrasas(it),
+                                                        icon: const Icon(
+                                                          Icons.delete_outline,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                         ),
                       ),

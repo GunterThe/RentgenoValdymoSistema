@@ -198,44 +198,165 @@ class _TestaiPageState extends State<TestaiPage> {
                                     ),
                                   ),
                                 )
-                              : SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: SingleChildScrollView(
-                                    child: DataTable(
-                                      columns: const [
-                                        DataColumn(label: Text('Tekstas')),
-                                        DataColumn(label: Text('Tipas')),
-                                        DataColumn(label: Text('Veiksmai')),
-                                      ],
-                                      rows: shown.map((it) {
-                                        return DataRow(cells: [
-                                          DataCell(Text(it.testotekstas)),
-                                          DataCell(Text(it.tipas ?? '')), 
-                                          DataCell(Row(
-                                            children: [
-                                              IconButton(
-                                                tooltip: 'Redaguoti',
-                                                onPressed: () => _createOrEdit(existing: it),
-                                                icon: const Icon(Icons.edit),
+                              : LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final isNarrow = constraints.maxWidth < 700;
+
+                                    if (isNarrow) {
+                                      return ListView.separated(
+                                        itemCount: shown.length,
+                                        separatorBuilder: (_, __) =>
+                                            const SizedBox(height: 8),
+                                        itemBuilder: (ctx, index) {
+                                          final it = shown[index];
+                                          final tipas = (it.tipas ?? '').trim();
+                                          return Card(
+                                            margin: EdgeInsets.zero,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                    12,
+                                                    10,
+                                                    12,
+                                                    8,
+                                                  ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  Text(
+                                                    it.testotekstas,
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      letterSpacing: 0.1,
+                                                    ),
+                                                  ),
+                                                  if (tipas.isNotEmpty) ...[
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      tipas,
+                                                      style: TextStyle(
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurfaceVariant,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                  const SizedBox(height: 8),
+                                                  Wrap(
+                                                    alignment: WrapAlignment.end,
+                                                    children: [
+                                                      IconButton(
+                                                        tooltip: 'Redaguoti',
+                                                        onPressed: () =>
+                                                            _createOrEdit(
+                                                              existing: it,
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons.edit,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Žingsniai',
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                              context,
+                                                            ).push(
+                                                              MaterialPageRoute(
+                                                                builder: (_) =>
+                                                                    ZingsnisPage(
+                                                                      testas: it,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .format_list_numbered,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Ištrinti',
+                                                        onPressed: () =>
+                                                            _delete(it),
+                                                        icon: const Icon(
+                                                          Icons.delete_outline,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
                                               ),
-                                              IconButton(
-                                                tooltip: 'Žingsniai',
-                                                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                                                  builder: (_) => ZingsnisPage(testas: it),
-                                                )),
-                                                icon: const Icon(Icons.format_list_numbered),
-                                              ),
-                                              IconButton(
-                                                tooltip: 'Ištrinti',
-                                                onPressed: () => _delete(it),
-                                                icon: const Icon(Icons.delete_outline),
-                                              ),
-                                            ],
-                                          )),
-                                        ]);
-                                      }).toList(),
-                                    ),
-                                  ),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    }
+
+                                    return SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: SingleChildScrollView(
+                                        child: DataTable(
+                                          columns: const [
+                                            DataColumn(label: Text('Tekstas')),
+                                            DataColumn(label: Text('Tipas')),
+                                            DataColumn(label: Text('Veiksmai')),
+                                          ],
+                                          rows: shown.map((it) {
+                                            return DataRow(
+                                              cells: [
+                                                DataCell(Text(it.testotekstas)),
+                                                DataCell(Text(it.tipas ?? '')),
+                                                DataCell(
+                                                  Row(
+                                                    children: [
+                                                      IconButton(
+                                                        tooltip: 'Redaguoti',
+                                                        onPressed: () =>
+                                                            _createOrEdit(
+                                                              existing: it,
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons.edit,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Žingsniai',
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                              context,
+                                                            ).push(
+                                                              MaterialPageRoute(
+                                                                builder: (_) =>
+                                                                    ZingsnisPage(
+                                                                      testas: it,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .format_list_numbered,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Ištrinti',
+                                                        onPressed: () =>
+                                                            _delete(it),
+                                                        icon: const Icon(
+                                                          Icons.delete_outline,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                         ),
                       ),
