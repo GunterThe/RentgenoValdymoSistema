@@ -9,14 +9,10 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 
-// Register controllers
 builder.Services.AddControllers();
 
-// Configure CORS for development and local frontend usage
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: "AllowLocal",
@@ -30,7 +26,6 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddSwaggerGen(options =>
 {
-    // ...
 
     options.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
     {
@@ -45,9 +40,7 @@ builder.Services.AddSwaggerGen(options =>
         [new OpenApiSecuritySchemeReference("bearer", document)] = []
     });
 });
-// Swagger/OpenAPI for controllers
 builder.Services.AddEndpointsApiExplorer();
-// Configure DbContext for PostgreSQL
 var connectionString = builder.Configuration.GetConnectionString("Default")
                        ?? builder.Configuration["ConnectionStrings:Default"]
                        ?? Environment.GetEnvironmentVariable("CONNECTION_STRING");
@@ -97,7 +90,7 @@ builder.Services.AddAuthentication(options =>
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // consider true in production
+    options.RequireHttpsMetadata = false;
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -120,7 +113,6 @@ static async Task ClearAllRefreshTokensAsync(IServiceProvider services, ILogger 
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // Safe & provider-agnostic (works even if ExecuteDelete isn't available).
         var tokens = await db.RefreshTokens.ToListAsync(ct);
         if (tokens.Count == 0) return;
 
@@ -130,7 +122,6 @@ static async Task ClearAllRefreshTokensAsync(IServiceProvider services, ILogger 
     }
     catch (Exception ex)
     {
-        // Best-effort: don't crash the app due to cleanup.
         logger.LogError(ex, "Failed to clear refresh tokens.");
     }
 }
@@ -146,12 +137,10 @@ if (clearOnShutdown)
 {
     app.Lifetime.ApplicationStopping.Register(() =>
     {
-        // ApplicationStopping doesn't support async callbacks; block briefly as best-effort.
         ClearAllRefreshTokensAsync(app.Services, app.Logger).GetAwaiter().GetResult();
     });
 }
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -163,7 +152,6 @@ if (app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-// Enable CORS (use the named policy)
 app.UseCors("AllowLocal");
 
 app.UseAuthentication();
