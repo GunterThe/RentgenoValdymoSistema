@@ -1,0 +1,21 @@
+{
+  # Optional: set an email for Let's Encrypt account.
+  email {$LETSENCRYPT_EMAIL}
+}
+
+{$DOMAIN} {
+  # Flutter web SPA
+  root * /usr/share/caddy
+  file_server
+
+  # SPA routing
+  try_files {path} /index.html
+
+  # Allow larger uploads (adjust if needed)
+  request_body {
+    max_size 100MB
+  }
+
+  # Proxy API to backend service
+  reverse_proxy /api/* backend:8080
+}

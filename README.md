@@ -16,3 +16,28 @@
 
 3. Paleidimas
 	- kai jau padarete `docker compose up --build` jeigu isjungete serveri arba perkrovet ta kompa tai reikia tiktai padaryti `docker compose up`, kad nebuildint be reikalo.
+
+---
+
+## Hostinimas internete (Production + HTTPS)
+
+Jeigu planuojate hostinti viešai internete, naudokite [docker-compose.prod.yml](docker-compose.prod.yml). Šis variantas:
+- publikuoja tik `80/443` (UI per `https://<domenas>/`)
+- **neeksponuoja** DB ir backend API portų į internetą (API pasiekiama per `/api/*` per reverse proxy)
+- automatiškai sukonfigūruoja HTTPS sertifikatus (Let’s Encrypt) per Caddy
+
+### Reikalavimai
+- Linux serveris su Docker
+- Domenas su DNS A/AAAA įrašu į serverio IP
+- Atidaryti firewall/security-group portai: TCP `80` ir `443`
+
+### Paleidimas
+1. Susikurkite `.env` pagal pavyzdį:
+	- `cp .env.example .env`
+	- suveskite realias reikšmes: `DOMAIN`, `LETSENCRYPT_EMAIL`, `POSTGRES_PASSWORD`, `JWT_KEY`, `JWT_ISSUER`, `JWT_AUDIENCE`
+
+2. Paleiskite production stack:
+	- `docker compose -f docker-compose.prod.yml up -d --build`
+
+3. Atidarykite naršyklėje:
+	- `https://<jusu-domenas>/`

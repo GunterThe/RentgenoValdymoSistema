@@ -86,7 +86,7 @@ class AuthService extends ChangeNotifier {
     );
 
     if (res.statusCode != 200) {
-      throw Exception('Login failed (${res.statusCode}): ${res.body}');
+      throw Exception('Neteisingas slaptazodis arba prisijungimo ID');
     }
 
     final body = jsonDecode(res.body) as Map<String, dynamic>;

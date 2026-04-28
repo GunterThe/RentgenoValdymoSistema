@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: rentgenai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # Initialize schema/data on first run only (when db_data is empty)
+      - ./Backend/sql/rentgenai.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rentgenai"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      ConnectionStrings__Default: Host=db;Port=5432;Database=rentgenai;Username=postgres;Password=${POSTGRES_PASSWORD?Set POSTGRES_PASSWORD in .env}
+
+      Jwt__Issuer: ${JWT_ISSUER?Set JWT_ISSUER in .env}
+      Jwt__Audience: ${JWT_AUDIENCE?Set JWT_AUDIENCE in .env}
+      Jwt__Key: ${JWT_KEY?Set JWT_KEY in .env}
+      Jwt__AccessTokenMinutes: ${JWT_ACCESS_TOKEN_MINUTES:-15}
+      Jwt__RefreshTokenDays: ${JWT_REFRESH_TOKEN_DAYS:-7}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.prod
+    environment:
+      DOMAIN: ${DOMAIN?Set DOMAIN in .env (e.g. example.com)}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL?Set LETSENCRYPT_EMAIL in .env}
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  uploads:
+  caddy_data:
+  caddy_config:

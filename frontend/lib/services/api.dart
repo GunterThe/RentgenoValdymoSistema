@@ -25,7 +25,6 @@ class Api {
     var res = await makeRequest(headers);
     if (res.statusCode != 401) return res;
 
-    // Force refresh and retry once.
     await AuthService.instance.refreshTokens();
     headers = await _headers();
     res = await makeRequest(headers);

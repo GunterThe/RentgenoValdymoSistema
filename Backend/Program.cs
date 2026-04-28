@@ -2,10 +2,12 @@ using Backend.Data;
 using Backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
 using Npgsql;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -153,6 +155,28 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowLocal");
+
+app.UseStatusCodePages(async statusCodeContext =>
+{
+    var context = statusCodeContext.HttpContext;
+
+    if (context.Response.StatusCode is StatusCodes.Status403Forbidden)
+    {
+        var endpoint = context.GetEndpoint();
+        var authorizeData = endpoint?.Metadata.GetOrderedMetadata<IAuthorizeData>();
+        var policyName = authorizeData?.FirstOrDefault(a => !string.IsNullOrWhiteSpace(a.Policy))?.Policy;
+
+        var message = policyName switch
+        {
+            "AdminOnly" => "Šiam veiksmui reikia administratoriaus prieigos.",
+            "SuperAdminOnly" => "Šiam veiksmui reikia superadministratoriaus prieigos.",
+            _ => "Neturite teisių atlikti šį veiksmą."
+        };
+
+        context.Response.ContentType = "application/json; charset=utf-8";
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new { message }));
+    }
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
