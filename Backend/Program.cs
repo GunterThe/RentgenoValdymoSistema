@@ -15,17 +15,20 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddControllers();
 
-builder.Services.AddCors(options =>
+if (builder.Environment.IsDevelopment())
 {
-    options.AddPolicy(name: "AllowLocal",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:8080", "http://127.0.0.1:8080")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
-});
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy(name: "AllowLocal",
+            policy =>
+            {
+                policy.WithOrigins("http://localhost:8080", "http://127.0.0.1:8080")
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            });
+    });
+}
 builder.Services.AddSwaggerGen(options =>
 {
 
@@ -154,7 +157,10 @@ if (app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-app.UseCors("AllowLocal");
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("AllowLocal");
+}
 
 app.UseStatusCodePages(async statusCodeContext =>
 {
