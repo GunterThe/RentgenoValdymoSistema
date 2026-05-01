@@ -52,7 +52,14 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    throw new InvalidOperationException("Connection string 'Default' not found. Set it in appsettings or environment variable 'CONNECTION_STRING'.");
+    if (builder.Environment.IsEnvironment("Testing"))
+    {
+        connectionString = "Host=localhost;Database=dummy;Username=dummy;Password=dummy";
+    }
+    else
+    {
+        throw new InvalidOperationException("Connection string 'Default' not found. Set it in appsettings or environment variable 'CONNECTION_STRING'.");
+    }
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -78,13 +85,28 @@ var jwtAudience = jwtSection["Audience"];
 
 if (string.IsNullOrWhiteSpace(jwtKey))
 {
-    throw new InvalidOperationException(
-        "JWT key is missing. Set configuration 'Jwt:Key' (env var 'Jwt__Key') in Docker/Production.");
+    if (builder.Environment.IsEnvironment("Testing"))
+    {
+        jwtKey = "TEST_TEST_TEST_TEST_TEST_TEST_TEST_TEST_32CHARS_MIN";
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "JWT key is missing. Set configuration 'Jwt:Key' (env var 'Jwt__Key') in Docker/Production.");
+    }
 }
 if (string.IsNullOrWhiteSpace(jwtIssuer) || string.IsNullOrWhiteSpace(jwtAudience))
 {
-    throw new InvalidOperationException(
-        "JWT issuer/audience missing. Set 'Jwt:Issuer' and 'Jwt:Audience' (env vars 'Jwt__Issuer' and 'Jwt__Audience').");
+    if (builder.Environment.IsEnvironment("Testing"))
+    {
+        jwtIssuer = jwtIssuer ?? "test-issuer";
+        jwtAudience = jwtAudience ?? "test-audience";
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "JWT issuer/audience missing. Set 'Jwt:Issuer' and 'Jwt:Audience' (env vars 'Jwt__Issuer' and 'Jwt__Audience').");
+    }
 }
 
 var key = Encoding.UTF8.GetBytes(jwtKey);
@@ -117,6 +139,11 @@ static async Task EnsureMustChangePasswordColumnAsync(IServiceProvider services,
     {
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var providerName = db.Database.ProviderName;
+        if (providerName is null || !providerName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
 
         await db.Database.ExecuteSqlRawAsync(
             "ALTER TABLE public.naudotojas ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;",
