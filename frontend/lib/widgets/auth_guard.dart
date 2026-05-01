@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../pages/login_page.dart';
 import '../services/auth_service.dart';
 
-class AuthGuard extends StatelessWidget {
+class AuthGuard extends StatefulWidget {
   final Widget child;
   final String protectedRoute;
 
@@ -12,6 +12,32 @@ class AuthGuard extends StatelessWidget {
     required this.child,
     required this.protectedRoute,
   });
+
+  @override
+  State<AuthGuard> createState() => _AuthGuardState();
+}
+
+class _AuthGuardState extends State<AuthGuard> {
+  void _maybeNotifyMustChangePassword(BuildContext context) {
+    if (!AuthService.instance.tryConsumeMustChangePasswordNotice()) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Jūsų slaptažodis buvo atstatytas — rekomenduojama jį pasikeisti.'),
+          action: SnackBarAction(
+            label: 'Keisti',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/paskyra');
+            },
+          ),
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,10 +51,11 @@ class AuthGuard extends StatelessWidget {
         }
 
         if (AuthService.instance.isAuthenticated) {
-          return child;
+          _maybeNotifyMustChangePassword(context);
+          return widget.child;
         }
 
-        return LoginPage(nextRoute: protectedRoute);
+        return LoginPage(nextRoute: widget.protectedRoute);
       },
     );
   }

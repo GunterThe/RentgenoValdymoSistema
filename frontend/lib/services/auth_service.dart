@@ -17,6 +17,7 @@ class AuthService extends ChangeNotifier {
   AuthTokens? _tokens;
   bool _initialized = false;
   Future<void>? _refreshInFlight;
+  bool _mustChangePasswordNoticeShown = false;
 
   bool get isInitialized => _initialized;
   bool get isAuthenticated => _tokens != null;
@@ -41,6 +42,29 @@ class AuthService extends ChangeNotifier {
     if (jwt == null || jwt.isEmpty) return false;
     final superAdmin = (JwtUtils.tryGetClaim(jwt, 'superadmin') ?? '').trim();
     return superAdmin.toLowerCase() == 'true';
+  }
+
+  bool get mustChangePassword {
+    final jwt = _tokens?.accessToken;
+    if (jwt == null || jwt.isEmpty) return false;
+    final v = (JwtUtils.tryGetClaim(jwt, 'mustChangePassword') ?? '').trim();
+    return v.toLowerCase() == 'true';
+  }
+
+  bool tryConsumeMustChangePasswordNotice() {
+    if (!isAuthenticated) {
+      _mustChangePasswordNoticeShown = false;
+      return false;
+    }
+
+    if (!mustChangePassword) {
+      _mustChangePasswordNoticeShown = false;
+      return false;
+    }
+
+    if (_mustChangePasswordNoticeShown) return false;
+    _mustChangePasswordNoticeShown = true;
+    return true;
   }
 
   String get displayName {
@@ -98,6 +122,7 @@ class AuthService extends ChangeNotifier {
 
     final tokens = AuthTokens(accessToken: access, refreshToken: refresh);
     _tokens = tokens;
+    _mustChangePasswordNoticeShown = false;
     await _store.write(tokens);
     notifyListeners();
   }
@@ -111,6 +136,7 @@ class AuthService extends ChangeNotifier {
     }
 
     _tokens = null;
+    _mustChangePasswordNoticeShown = false;
     await _store.clear();
     notifyListeners();
   }
@@ -144,6 +170,7 @@ class AuthService extends ChangeNotifier {
     final refreshToken = _tokens?.refreshToken;
     if (refreshToken == null || refreshToken.isEmpty) {
       _tokens = null;
+      _mustChangePasswordNoticeShown = false;
       await _store.clear();
       return;
     }
@@ -157,6 +184,7 @@ class AuthService extends ChangeNotifier {
 
     if (res.statusCode != 200) {
       _tokens = null;
+      _mustChangePasswordNoticeShown = false;
       await _store.clear();
       notifyListeners();
       return;
@@ -167,6 +195,7 @@ class AuthService extends ChangeNotifier {
     final refresh = body['refreshToken'] as String?;
     if (access == null || refresh == null) {
       _tokens = null;
+      _mustChangePasswordNoticeShown = false;
       await _store.clear();
       notifyListeners();
       return;
@@ -174,6 +203,7 @@ class AuthService extends ChangeNotifier {
 
     final tokens = AuthTokens(accessToken: access, refreshToken: refresh);
     _tokens = tokens;
+    _mustChangePasswordNoticeShown = false;
     await _store.write(tokens);
     notifyListeners();
   }

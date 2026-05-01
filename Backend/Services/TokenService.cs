@@ -31,7 +31,8 @@ public class TokenService : ITokenService
             new Claim("vardas", user.Vardas),
             new Claim("pavarde", user.Pavarde),
             new Claim("admin", user.Adminas.ToString()),
-            new Claim("superadmin", user.SuperAdminas.ToString())
+            new Claim("superadmin", user.SuperAdminas.ToString()),
+            new Claim("mustChangePassword", user.MustChangePassword.ToString())
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));

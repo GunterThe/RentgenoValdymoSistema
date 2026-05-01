@@ -42,6 +42,10 @@ namespace Backend.Models
         [Column("super_adminas")]
         public bool SuperAdminas { get; set; } = false;
 
+        [Required]
+        [Column("must_change_password")]
+        public bool MustChangePassword { get; set; } = false;
+
         [JsonIgnore]
         public List<RefreshToken> RefreshToken { get; set; } = new List<RefreshToken>();
         [JsonIgnore]

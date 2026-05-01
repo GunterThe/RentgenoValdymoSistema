@@ -871,7 +871,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                     if (isNarrow) {
                                       return ListView.separated(
                                         itemCount: shown.length,
-                                        separatorBuilder: (_, __) =>
+                                        separatorBuilder: (_, _) =>
                                             const SizedBox(height: 8),
                                         itemBuilder: (ctx, index) {
                                           final it = shown[index];

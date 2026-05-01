@@ -213,6 +213,7 @@ namespace Backend.Controllers
                 return Unauthorized(new { message = "Dabartinis slaptažodis yra neteisingas" });
             }
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.MustChangePassword = false;
             await RevokeAllRefreshTokens(user.Id);
             await _db.SaveChangesAsync();
             return NoContent();
@@ -244,6 +245,7 @@ namespace Backend.Controllers
             }
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.MustChangePassword = true;
             await RevokeAllRefreshTokens(user.Id);
             await _db.SaveChangesAsync();
             return NoContent();

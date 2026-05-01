@@ -140,7 +140,8 @@ CREATE TABLE public.naudotojas (
     adminas boolean DEFAULT false NOT NULL,
     password_hash character varying(200) NOT NULL,
     prisijungimoid text,
-    super_adminas boolean
+    super_adminas boolean,
+    must_change_password boolean DEFAULT false NOT NULL
 );
 
 

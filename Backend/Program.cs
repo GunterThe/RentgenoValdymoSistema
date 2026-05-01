@@ -111,6 +111,26 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
+static async Task EnsureMustChangePasswordColumnAsync(IServiceProvider services, ILogger logger, CancellationToken ct = default)
+{
+    try
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        await db.Database.ExecuteSqlRawAsync(
+            "ALTER TABLE public.naudotojas ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;",
+            ct
+        );
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to ensure must_change_password column.");
+    }
+}
+
+await EnsureMustChangePasswordColumnAsync(app.Services, app.Logger);
+
 static async Task ClearAllRefreshTokensAsync(IServiceProvider services, ILogger logger, CancellationToken ct = default)
 {
     try
