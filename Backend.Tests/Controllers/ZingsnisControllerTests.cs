@@ -14,8 +14,7 @@ public sealed class ZingsnisControllerTests : IClassFixture<CustomWebApplication
         _factory = factory;
     }
 
-    [Fact]
-    public async Task Crud_Works_For_User_And_Delete_For_Admin()
+    private async Task<(Guid userId, int linkId, int tplId, int zingsnisId)> SeedZingsnisAsync()
     {
         await _factory.ResetDatabaseAsync();
 
@@ -76,7 +75,6 @@ public sealed class ZingsnisControllerTests : IClassFixture<CustomWebApplication
         });
 
         var userClient = _factory.CreateClient().AsUser(userId);
-
         var create = await userClient.PostAsJsonAsync("/api/Zingsnis", new
         {
             komentaras = "c",
@@ -88,17 +86,46 @@ public sealed class ZingsnisControllerTests : IClassFixture<CustomWebApplication
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
         var created = await create.Content.ReadFromJsonAsync<Zingsnis>();
         Assert.NotNull(created);
-        Assert.True(created!.Id > 0);
 
-        var get = await userClient.GetAsync($"/api/Zingsnis/{created.Id}");
+        return (userId, linkId, tplId, created!.Id);
+    }
+
+    [Fact]
+    public async Task Create_Works_For_User()
+    {
+        var (_, _, _, zingsnisId) = await SeedZingsnisAsync();
+        Assert.True(zingsnisId > 0);
+    }
+
+    [Fact]
+    public async Task GetById_Works_For_User()
+    {
+        var (userId, _, _, zingsnisId) = await SeedZingsnisAsync();
+        var userClient = _factory.CreateClient().AsUser(userId);
+
+        var get = await userClient.GetAsync($"/api/Zingsnis/{zingsnisId}");
         Assert.Equal(HttpStatusCode.OK, get.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetByEverything_Works_For_User()
+    {
+        var (userId, linkId, tplId, _) = await SeedZingsnisAsync();
+        var userClient = _factory.CreateClient().AsUser(userId);
 
         var getByEverything = await userClient.GetAsync($"/api/Zingsnis/getByEverything/{linkId}/{tplId}");
         Assert.Equal(HttpStatusCode.OK, getByEverything.StatusCode);
+    }
 
-        var update = await userClient.PutAsJsonAsync($"/api/Zingsnis/{created.Id}", new
+    [Fact]
+    public async Task Update_Works_For_User()
+    {
+        var (userId, linkId, tplId, zingsnisId) = await SeedZingsnisAsync();
+        var userClient = _factory.CreateClient().AsUser(userId);
+
+        var update = await userClient.PutAsJsonAsync($"/api/Zingsnis/{zingsnisId}", new
         {
-            id = created.Id,
+            id = zingsnisId,
             komentaras = "updated",
             completedAt = (DateTime?)null,
             testasIrasasId = linkId,
@@ -107,16 +134,23 @@ public sealed class ZingsnisControllerTests : IClassFixture<CustomWebApplication
         });
         Assert.Equal(HttpStatusCode.NoContent, update.StatusCode);
 
-        var get2 = await userClient.GetAsync($"/api/Zingsnis/{created.Id}");
+        var get2 = await userClient.GetAsync($"/api/Zingsnis/{zingsnisId}");
         var fetched2 = await get2.Content.ReadFromJsonAsync<Zingsnis>();
         Assert.NotNull(fetched2);
         Assert.Equal("updated", fetched2!.Komentaras);
+    }
+
+    [Fact]
+    public async Task Delete_Works_For_Admin()
+    {
+        var (userId, _, _, zingsnisId) = await SeedZingsnisAsync();
 
         var adminClient = _factory.CreateClient().AsAdmin();
-        var del = await adminClient.DeleteAsync($"/api/Zingsnis/{created.Id}");
+        var del = await adminClient.DeleteAsync($"/api/Zingsnis/{zingsnisId}");
         Assert.Equal(HttpStatusCode.NoContent, del.StatusCode);
 
-        var getDeleted = await userClient.GetAsync($"/api/Zingsnis/{created.Id}");
+        var userClient = _factory.CreateClient().AsUser(userId);
+        var getDeleted = await userClient.GetAsync($"/api/Zingsnis/{zingsnisId}");
         Assert.Equal(HttpStatusCode.NotFound, getDeleted.StatusCode);
     }
 }

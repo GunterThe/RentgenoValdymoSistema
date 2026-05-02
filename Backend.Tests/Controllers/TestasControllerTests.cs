@@ -14,8 +14,7 @@ public sealed class TestasControllerTests : IClassFixture<CustomWebApplicationFa
         _factory = factory;
     }
 
-    [Fact]
-    public async Task Get_And_Delete_Work_With_Seeded_Data()
+    private async Task<int> SeedTestasAsync()
     {
         await _factory.ResetDatabaseAsync();
 
@@ -26,22 +25,43 @@ public sealed class TestasControllerTests : IClassFixture<CustomWebApplicationFa
             await db.SaveChangesAsync();
         });
 
+        return testas.Id;
+    }
+
+    [Fact]
+    public async Task GetAll_Returns_Seeded_Item()
+    {
+        var testasId = await SeedTestasAsync();
         var userClient = _factory.CreateClient().AsUser(Guid.NewGuid());
 
         var getAll = await userClient.GetAsync("/api/Testas");
         Assert.Equal(HttpStatusCode.OK, getAll.StatusCode);
         var list = await getAll.Content.ReadFromJsonAsync<List<Testas>>();
         Assert.NotNull(list);
-        Assert.Contains(list!, t => t.Id == testas.Id);
+        Assert.Contains(list!, t => t.Id == testasId);
+    }
 
-        var get = await userClient.GetAsync($"/api/Testas/{testas.Id}");
+    [Fact]
+    public async Task GetById_Works_With_Seeded_Data()
+    {
+        var testasId = await SeedTestasAsync();
+        var userClient = _factory.CreateClient().AsUser(Guid.NewGuid());
+
+        var get = await userClient.GetAsync($"/api/Testas/{testasId}");
         Assert.Equal(HttpStatusCode.OK, get.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_Works_For_Admin()
+    {
+        var testasId = await SeedTestasAsync();
+        var userClient = _factory.CreateClient().AsUser(Guid.NewGuid());
 
         var adminClient = _factory.CreateClient().AsAdmin();
-        var del = await adminClient.DeleteAsync($"/api/Testas/{testas.Id}");
+        var del = await adminClient.DeleteAsync($"/api/Testas/{testasId}");
         Assert.Equal(HttpStatusCode.NoContent, del.StatusCode);
 
-        var getDeleted = await userClient.GetAsync($"/api/Testas/{testas.Id}");
+        var getDeleted = await userClient.GetAsync($"/api/Testas/{testasId}");
         Assert.Equal(HttpStatusCode.NotFound, getDeleted.StatusCode);
     }
 }

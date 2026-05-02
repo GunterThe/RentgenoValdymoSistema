@@ -15,27 +15,46 @@ public sealed class LokacijaControllerTests : IClassFixture<CustomWebApplication
     }
 
     [Fact]
-    public async Task Crud_Works_For_Admin()
+    public async Task Create_Works_For_Admin()
     {
         await _factory.ResetDatabaseAsync();
         var client = _factory.CreateClient().AsAdmin();
 
-        // Create
         var createRes = await client.PostAsJsonAsync("/api/Lokacija", new { pavadinimas = "Test Lokacija" });
         Assert.Equal(HttpStatusCode.Created, createRes.StatusCode);
         var created = await createRes.Content.ReadFromJsonAsync<Lokacija>();
         Assert.NotNull(created);
         Assert.True(created!.Id > 0);
         Assert.Equal("Test Lokacija", created.Pavadinimas);
+    }
 
-        // Read
+    [Fact]
+    public async Task GetById_Returns_Item()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var createRes = await client.PostAsJsonAsync("/api/Lokacija", new { pavadinimas = "Test Lokacija" });
+        var created = await createRes.Content.ReadFromJsonAsync<Lokacija>();
+        Assert.NotNull(created);
+
         var getRes = await client.GetAsync($"/api/Lokacija/{created.Id}");
         Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
         var fetched = await getRes.Content.ReadFromJsonAsync<Lokacija>();
         Assert.NotNull(fetched);
         Assert.Equal(created.Id, fetched!.Id);
+    }
 
-        // Update
+    [Fact]
+    public async Task Update_Works_For_Admin()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var createRes = await client.PostAsJsonAsync("/api/Lokacija", new { pavadinimas = "Test Lokacija" });
+        var created = await createRes.Content.ReadFromJsonAsync<Lokacija>();
+        Assert.NotNull(created);
+
         var updateRes = await client.PutAsJsonAsync($"/api/Lokacija/{created.Id}", new { id = created.Id, pavadinimas = "Updated" });
         Assert.Equal(HttpStatusCode.NoContent, updateRes.StatusCode);
 
@@ -43,8 +62,18 @@ public sealed class LokacijaControllerTests : IClassFixture<CustomWebApplication
         var fetched2 = await getRes2.Content.ReadFromJsonAsync<Lokacija>();
         Assert.NotNull(fetched2);
         Assert.Equal("Updated", fetched2!.Pavadinimas);
+    }
 
-        // Delete
+    [Fact]
+    public async Task Delete_Works_For_Admin()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var createRes = await client.PostAsJsonAsync("/api/Lokacija", new { pavadinimas = "Test Lokacija" });
+        var created = await createRes.Content.ReadFromJsonAsync<Lokacija>();
+        Assert.NotNull(created);
+
         var delRes = await client.DeleteAsync($"/api/Lokacija/{created.Id}");
         Assert.Equal(HttpStatusCode.NoContent, delRes.StatusCode);
 

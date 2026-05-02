@@ -14,46 +14,87 @@ public sealed class IrasasControllerTests : IClassFixture<CustomWebApplicationFa
         _factory = factory;
     }
 
-    [Fact]
-    public async Task Crud_Works_For_Admin_When_No_Sablonas()
+    private async Task<Lokacija> CreateLokacijaAsync(string pavadinimas = "L")
     {
-        await _factory.ResetDatabaseAsync();
-        var client = _factory.CreateClient().AsAdmin();
-
-        var lokacija = new Lokacija { Pavadinimas = "L" };
+        var lokacija = new Lokacija { Pavadinimas = pavadinimas };
         await _factory.WithDbContextAsync(async db =>
         {
             db.Lokacijos.Add(lokacija);
             await db.SaveChangesAsync();
         });
+        return lokacija;
+    }
 
-        // Create
-        var createRes = await client.PostAsJsonAsync("/api/Irasas", new
-        {
-            idDokumento = "doc-123",
-            pavadinimas = "Pavadinimas",
-            lokacijaId = lokacija.Id,
-            sablonasId = (int?)null,
-        });
+    private static object CreatePayload(int lokacijaId) => new
+    {
+        idDokumento = "doc-123",
+        pavadinimas = "Pavadinimas",
+        lokacijaId,
+        sablonasId = (int?)null,
+    };
+
+    [Fact]
+    public async Task Create_Works_For_Admin_When_No_Sablonas()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var lokacija = await CreateLokacijaAsync();
+
+        var createRes = await client.PostAsJsonAsync("/api/Irasas", CreatePayload(lokacija.Id));
 
         Assert.Equal(HttpStatusCode.Created, createRes.StatusCode);
         var created = await createRes.Content.ReadFromJsonAsync<Irasas>();
         Assert.NotNull(created);
         Assert.True(created!.Id > 0);
         Assert.Equal(lokacija.Id, created.LokacijaId);
+    }
 
-        // Read
-        var getRes = await client.GetAsync($"/api/Irasas/{created.Id}");
+    [Fact]
+    public async Task GetById_Works_For_Admin()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var lokacija = await CreateLokacijaAsync();
+        var createRes = await client.PostAsJsonAsync("/api/Irasas", CreatePayload(lokacija.Id));
+        var created = await createRes.Content.ReadFromJsonAsync<Irasas>();
+        Assert.NotNull(created);
+
+        var getRes = await client.GetAsync($"/api/Irasas/{created!.Id}");
         Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+    }
 
-        // List
+    [Fact]
+    public async Task GetAll_Returns_Items()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var lokacija = await CreateLokacijaAsync();
+        await client.PostAsJsonAsync("/api/Irasas", CreatePayload(lokacija.Id));
+
         var listRes = await client.GetAsync("/api/Irasas");
         Assert.Equal(HttpStatusCode.OK, listRes.StatusCode);
+        var list = await listRes.Content.ReadFromJsonAsync<List<Irasas>>();
+        Assert.NotNull(list);
+        Assert.True(list!.Count >= 1);
+    }
 
-        // Update
+    [Fact]
+    public async Task Update_Works_For_Admin()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var lokacija = await CreateLokacijaAsync();
+        var createRes = await client.PostAsJsonAsync("/api/Irasas", CreatePayload(lokacija.Id));
+        var created = await createRes.Content.ReadFromJsonAsync<Irasas>();
+        Assert.NotNull(created);
+
         var updatePayload = new
         {
-            id = created.Id,
+            id = created!.Id,
             idDokumento = created.IdDokumento,
             pavadinimas = "Updated",
             pradzia = created.Pradzia,
@@ -69,9 +110,20 @@ public sealed class IrasasControllerTests : IClassFixture<CustomWebApplicationFa
         var updated = await getRes2.Content.ReadFromJsonAsync<Irasas>();
         Assert.NotNull(updated);
         Assert.Equal("Updated", updated!.Pavadinimas);
+    }
 
-        // Delete
-        var delRes = await client.DeleteAsync($"/api/Irasas/{created.Id}");
+    [Fact]
+    public async Task Delete_Works_For_Admin()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var lokacija = await CreateLokacijaAsync();
+        var createRes = await client.PostAsJsonAsync("/api/Irasas", CreatePayload(lokacija.Id));
+        var created = await createRes.Content.ReadFromJsonAsync<Irasas>();
+        Assert.NotNull(created);
+
+        var delRes = await client.DeleteAsync($"/api/Irasas/{created!.Id}");
         Assert.Equal(HttpStatusCode.NoContent, delRes.StatusCode);
 
         var getRes3 = await client.GetAsync($"/api/Irasas/{created.Id}");

@@ -15,7 +15,7 @@ public sealed class SablonasControllerTests : IClassFixture<CustomWebApplication
     }
 
     [Fact]
-    public async Task Crud_Works_For_Admin()
+    public async Task Create_Works_For_Admin()
     {
         await _factory.ResetDatabaseAsync();
         var client = _factory.CreateClient().AsAdmin();
@@ -25,14 +25,53 @@ public sealed class SablonasControllerTests : IClassFixture<CustomWebApplication
         var created = await createRes.Content.ReadFromJsonAsync<Sablonas>();
         Assert.NotNull(created);
         Assert.True(created!.Id > 0);
+        Assert.Equal("S1", created.Pavadinimas);
+    }
 
-        var getRes = await client.GetAsync($"/api/Sablonas/{created.Id}");
+    [Fact]
+    public async Task GetById_Returns_Item()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var createRes = await client.PostAsJsonAsync("/api/Sablonas", new { pavadinimas = "S1" });
+        var created = await createRes.Content.ReadFromJsonAsync<Sablonas>();
+        Assert.NotNull(created);
+
+        var getRes = await client.GetAsync($"/api/Sablonas/{created!.Id}");
         Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+    }
 
-        var updateRes = await client.PutAsJsonAsync($"/api/Sablonas/{created.Id}", new { id = created.Id, pavadinimas = "S2" });
+    [Fact]
+    public async Task Update_Works_For_Admin()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var createRes = await client.PostAsJsonAsync("/api/Sablonas", new { pavadinimas = "S1" });
+        var created = await createRes.Content.ReadFromJsonAsync<Sablonas>();
+        Assert.NotNull(created);
+
+        var updateRes = await client.PutAsJsonAsync($"/api/Sablonas/{created!.Id}", new { id = created.Id, pavadinimas = "S2" });
         Assert.Equal(HttpStatusCode.NoContent, updateRes.StatusCode);
 
-        var delRes = await client.DeleteAsync($"/api/Sablonas/{created.Id}");
+        var getRes = await client.GetAsync($"/api/Sablonas/{created.Id}");
+        var fetched = await getRes.Content.ReadFromJsonAsync<Sablonas>();
+        Assert.NotNull(fetched);
+        Assert.Equal("S2", fetched!.Pavadinimas);
+    }
+
+    [Fact]
+    public async Task Delete_Works_For_Admin()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var createRes = await client.PostAsJsonAsync("/api/Sablonas", new { pavadinimas = "S1" });
+        var created = await createRes.Content.ReadFromJsonAsync<Sablonas>();
+        Assert.NotNull(created);
+
+        var delRes = await client.DeleteAsync($"/api/Sablonas/{created!.Id}");
         Assert.Equal(HttpStatusCode.NoContent, delRes.StatusCode);
 
         var getRes2 = await client.GetAsync($"/api/Sablonas/{created.Id}");

@@ -15,7 +15,7 @@ public sealed class PrisegtasFailasControllerTests : IClassFixture<CustomWebAppl
     }
 
     [Fact]
-    public async Task Crud_Works_For_Authorized_User()
+    public async Task Create_Works_For_Authorized_User()
     {
         await _factory.ResetDatabaseAsync();
         var client = _factory.CreateClient().AsUser(Guid.NewGuid());
@@ -36,9 +36,47 @@ public sealed class PrisegtasFailasControllerTests : IClassFixture<CustomWebAppl
         var created = await createRes.Content.ReadFromJsonAsync<PrisegtasFailas>();
         Assert.NotNull(created);
         Assert.Equal(id, created!.Id);
+    }
+
+    [Fact]
+    public async Task GetById_Works_For_Authorized_User()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsUser(Guid.NewGuid());
+
+        var id = Guid.NewGuid();
+        await client.PostAsJsonAsync("/api/PrisegtasFailas", new
+        {
+            id,
+            zingsnisId = (int?)null,
+            zingsnisTemplateId = (int?)null,
+            failoPav = "a.png",
+            dydis = 123,
+            nuoroda = (string?)null,
+            sukurimoLaikas = DateTime.UtcNow,
+        });
 
         var get = await client.GetAsync($"/api/PrisegtasFailas/{id}");
         Assert.Equal(HttpStatusCode.OK, get.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_Works_For_Authorized_User()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsUser(Guid.NewGuid());
+
+        var id = Guid.NewGuid();
+        await client.PostAsJsonAsync("/api/PrisegtasFailas", new
+        {
+            id,
+            zingsnisId = (int?)null,
+            zingsnisTemplateId = (int?)null,
+            failoPav = "a.png",
+            dydis = 123,
+            nuoroda = (string?)null,
+            sukurimoLaikas = DateTime.UtcNow,
+        });
 
         var updateRes = await client.PutAsJsonAsync($"/api/PrisegtasFailas/{id}", new
         {
@@ -56,6 +94,25 @@ public sealed class PrisegtasFailasControllerTests : IClassFixture<CustomWebAppl
         var updated = await get2.Content.ReadFromJsonAsync<PrisegtasFailas>();
         Assert.NotNull(updated);
         Assert.Equal("b.png", updated!.FailoPav);
+    }
+
+    [Fact]
+    public async Task Delete_Works_For_Authorized_User()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsUser(Guid.NewGuid());
+
+        var id = Guid.NewGuid();
+        await client.PostAsJsonAsync("/api/PrisegtasFailas", new
+        {
+            id,
+            zingsnisId = (int?)null,
+            zingsnisTemplateId = (int?)null,
+            failoPav = "a.png",
+            dydis = 123,
+            nuoroda = (string?)null,
+            sukurimoLaikas = DateTime.UtcNow,
+        });
 
         var del = await client.DeleteAsync($"/api/PrisegtasFailas/{id}");
         Assert.Equal(HttpStatusCode.NoContent, del.StatusCode);

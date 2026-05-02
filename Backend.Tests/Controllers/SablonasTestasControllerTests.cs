@@ -15,7 +15,7 @@ public sealed class SablonasTestasControllerTests : IClassFixture<CustomWebAppli
     }
 
     [Fact]
-    public async Task Create_Get_Delete_Works_For_Admin()
+    public async Task Create_Works_For_Admin()
     {
         await _factory.ResetDatabaseAsync();
         var client = _factory.CreateClient().AsAdmin();
@@ -41,9 +41,49 @@ public sealed class SablonasTestasControllerTests : IClassFixture<CustomWebAppli
         Assert.NotNull(created);
         Assert.Equal(sablonas.Id, created!.Sablonasid);
         Assert.Equal(testas.Id, created.Testasid);
+    }
+
+    [Fact]
+    public async Task Get_Works_For_Admin()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var sablonas = new Sablonas { Pavadinimas = "S" };
+        var testas = new Testas { Testotekstas = "T" };
+
+        await _factory.WithDbContextAsync(async db =>
+        {
+            db.Sablonai.Add(sablonas);
+            db.Testai.Add(testas);
+            await db.SaveChangesAsync();
+
+            db.SablonasTestai.Add(new SablonasTestas { Sablonasid = sablonas.Id, Testasid = testas.Id });
+            await db.SaveChangesAsync();
+        });
 
         var getRes = await client.GetAsync($"/api/SablonasTestas/{sablonas.Id}/{testas.Id}");
         Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_Works_For_Admin()
+    {
+        await _factory.ResetDatabaseAsync();
+        var client = _factory.CreateClient().AsAdmin();
+
+        var sablonas = new Sablonas { Pavadinimas = "S" };
+        var testas = new Testas { Testotekstas = "T" };
+
+        await _factory.WithDbContextAsync(async db =>
+        {
+            db.Sablonai.Add(sablonas);
+            db.Testai.Add(testas);
+            await db.SaveChangesAsync();
+
+            db.SablonasTestai.Add(new SablonasTestas { Sablonasid = sablonas.Id, Testasid = testas.Id });
+            await db.SaveChangesAsync();
+        });
 
         var delRes = await client.DeleteAsync($"/api/SablonasTestas/{sablonas.Id}/{testas.Id}");
         Assert.Equal(HttpStatusCode.NoContent, delRes.StatusCode);
