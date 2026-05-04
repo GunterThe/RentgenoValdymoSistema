@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../services/api.dart';
 import '../services/auth_service.dart';
 
 void showPlaceholder(BuildContext context, String title) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('$title - dar neįgyvendinta')),
-  );
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text('$title - dar neįgyvendinta')));
 }
 
 class AppScaffold extends StatelessWidget {
@@ -32,12 +33,7 @@ class AppScaffold extends StatelessWidget {
         onPressed: () => Navigator.of(context).pushNamed('/paskyra'),
         icon: const Icon(Icons.person_outline),
       ),
-      if (isAdmin)
-        IconButton(
-          tooltip: 'Žinutės',
-          onPressed: () => Navigator.of(context).pushNamed('/zinutes'),
-          icon: const Icon(Icons.markunread_outlined),
-        ),
+      if (isAdmin) const _AdminInboxIconButton(),
       IconButton(
         tooltip: 'Atsijungti',
         onPressed: () async {
@@ -51,7 +47,7 @@ class AppScaffold extends StatelessWidget {
         tooltip: 'Testai',
         onPressed: () => Navigator.of(context).pushNamed('/testai'),
         icon: const Icon(Icons.list_alt),
-      )
+      ),
     ];
   }
 
@@ -60,14 +56,71 @@ class AppScaffold extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
-        actions: [
-          ..._defaultActions(context),
-          ...actions,
-        ],
+        actions: [..._defaultActions(context), ...actions],
       ),
       body: body,
       floatingActionButton: floatingActionButton,
       floatingActionButtonLocation: floatingActionButtonLocation,
     );
+  }
+}
+
+class _AdminInboxIconButton extends StatefulWidget {
+  const _AdminInboxIconButton();
+
+  @override
+  State<_AdminInboxIconButton> createState() => _AdminInboxIconButtonState();
+}
+
+class _AdminInboxIconButtonState extends State<_AdminInboxIconButton> {
+  bool _hasUnread = false;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+
+    try {
+      final list = await Api.fetchMyInboxZinutes();
+      final hasUnread = list.whereType<Map<String, dynamic>>().any(
+        (x) => (x['perskaityta'] as bool?) == false,
+      );
+      if (!mounted) return;
+      setState(() => _hasUnread = hasUnread);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _hasUnread = false);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _openInbox() async {
+    final current = ModalRoute.of(context)?.settings.name;
+    if (current == '/zinutes') {
+      await _refresh();
+      return;
+    }
+
+    await Navigator.of(context).pushNamed('/zinutes');
+    if (!mounted) return;
+    await _refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget icon = const Icon(Icons.markunread_outlined);
+
+    if (_hasUnread) {
+      icon = Badge(label: const Text('!'), child: icon);
+    }
+
+    return IconButton(tooltip: 'Žinutės', onPressed: _openInbox, icon: icon);
   }
 }

@@ -145,7 +145,8 @@ namespace Backend.Controllers
                 GimimoData = EnsureUtc(req.GimimoData.Date),
                 Adminas = canCreateAdmin && req.Adminas,
                 PrisijungimoId = prisijungimoId,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password)
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                MustChangePassword = true
             };
 
             _db.Naudotojai.Add(user);
