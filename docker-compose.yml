@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data_pg18:/var/lib/postgresql
       # Initialize schema/data on first run
       - ./Backend/sql/rentgenai.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
     healthcheck:
@@ -49,5 +49,5 @@ services:
       - "8080:80"
 
 volumes:
-  db_data:
+  db_data_pg18:
   uploads:

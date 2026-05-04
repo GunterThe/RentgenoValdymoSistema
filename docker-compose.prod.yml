@@ -6,8 +6,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?Set POSTGRES_PASSWORD in .env}
     volumes:
-      - db_data:/var/lib/postgresql/data
-      # Initialize schema/data on first run only (when db_data is empty)
+      - db_data_pg18:/var/lib/postgresql
       - ./Backend/sql/rentgenai.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d rentgenai"]
@@ -55,7 +54,7 @@ services:
     restart: unless-stopped
 
 volumes:
-  db_data:
+  db_data_pg18:
   uploads:
   caddy_data:
   caddy_config:
