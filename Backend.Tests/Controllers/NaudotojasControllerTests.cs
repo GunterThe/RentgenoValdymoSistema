@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Backend.Controllers;
 using Backend.Models;
 using Backend.Tests.Testing;
@@ -131,5 +132,380 @@ public sealed class NaudotojasControllerTests : IClassFixture<CustomWebApplicati
             Assert.NotNull(updated);
             Assert.Equal("Updated", updated!.Vardas);
         });
+    }
+
+    [Fact]
+    public async Task Create_Returns_Forbidden_For_NonAdmin_And_Includes_AdminOnly_Message()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var client = _factory.CreateClient().AsUser(Guid.NewGuid(), admin: false);
+        var res = await client.PostAsJsonAsync("/api/Naudotojas", new
+        {
+            vardas = "Jonas",
+            pavarde = "Jonaitis",
+            gimimoData = new DateTime(2000, 1, 1),
+            adminas = false,
+            password = "secret1",
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        Assert.Equal("Šiam veiksmui reikia administratoriaus prieigos.", doc.RootElement.GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task ToggleAdmin_Returns_Forbidden_For_Admin_Not_SuperAdmin_And_Includes_Message()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var user = new Naudotojas
+        {
+            Id = Guid.NewGuid(),
+            Vardas = "A",
+            Pavarde = "B",
+            GimimoData = new DateTime(1999, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Adminas = false,
+            PrisijungimoId = "a.b.123",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("secret1"),
+            SuperAdminas = false,
+            MustChangePassword = false,
+        };
+
+        await _factory.WithDbContextAsync(async db =>
+        {
+            db.Naudotojai.Add(user);
+            await db.SaveChangesAsync();
+        });
+
+        var client = _factory.CreateClient().AsUser(Guid.NewGuid(), admin: true, superAdmin: false);
+        var res = await client.PutAsync($"/api/Naudotojas/toggleAdmin/{user.Id}", content: null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        Assert.Equal("Šiam veiksmui reikia superadministratoriaus prieigos.", doc.RootElement.GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task ToggleAdmin_Works_For_SuperAdmin()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var user = new Naudotojas
+        {
+            Id = Guid.NewGuid(),
+            Vardas = "A",
+            Pavarde = "B",
+            GimimoData = new DateTime(1999, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            Adminas = false,
+            PrisijungimoId = "a.b.123",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("secret1"),
+            SuperAdminas = false,
+            MustChangePassword = false,
+        };
+
+        await _factory.WithDbContextAsync(async db =>
+        {
+            db.Naudotojai.Add(user);
+            await db.SaveChangesAsync();
+        });
+
+        var client = _factory.CreateClient().AsSuperAdmin();
+        var res = await client.PutAsync($"/api/Naudotojas/toggleAdmin/{user.Id}", content: null);
+        Assert.Equal(HttpStatusCode.NoContent, res.StatusCode);
+
+        await _factory.WithDbContextAsync(async db =>
+        {
+            var updated = await db.Naudotojai.FindAsync(user.Id);
+            Assert.NotNull(updated);
+            Assert.True(updated!.Adminas);
+        });
+    }
+
+    [Fact]
+    public async Task ChangePassword_Returns_Forbidden_When_User_Tries_To_Change_Other_User()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var currentUserId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+
+        await _factory.WithDbContextAsync(async db =>
+        {
+            db.Naudotojai.Add(new Naudotojas
+            {
+                Id = otherUserId,
+                Vardas = "O",
+                Pavarde = "U",
+                GimimoData = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                Adminas = false,
+                PrisijungimoId = "o.u.123",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("secret1"),
+                SuperAdminas = false,
+                MustChangePassword = false,
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var client = _factory.CreateClient().AsUser(currentUserId);
+        var res = await client.PutAsJsonAsync($"/api/Naudotojas/changePassword/{otherUserId}", new
+        {
+            currentPassword = "secret1",
+            newPassword = "secret2",
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        Assert.Equal("Neturite teisių atlikti šį veiksmą.", doc.RootElement.GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task ChangePassword_Returns_Unauthorized_When_CurrentPassword_Is_Wrong()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var userId = Guid.NewGuid();
+        await _factory.WithDbContextAsync(async db =>
+        {
+            db.Naudotojai.Add(new Naudotojas
+            {
+                Id = userId,
+                Vardas = "A",
+                Pavarde = "B",
+                GimimoData = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                Adminas = false,
+                PrisijungimoId = "a.b.123",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("correct"),
+                SuperAdminas = false,
+                MustChangePassword = true,
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var client = _factory.CreateClient().AsUser(userId);
+        var res = await client.PutAsJsonAsync($"/api/Naudotojas/changePassword/{userId}", new
+        {
+            currentPassword = "wrong",
+            newPassword = "newpass",
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangePassword_Works_For_Self_And_Revokes_RefreshTokens()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var userId = Guid.NewGuid();
+        var activeToken = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            Token = "t1",
+            Expires = DateTime.UtcNow.AddDays(1),
+            Revoked = null,
+            NaudotojasId = userId,
+        };
+
+        await _factory.WithDbContextAsync(async db =>
+        {
+            db.Naudotojai.Add(new Naudotojas
+            {
+                Id = userId,
+                Vardas = "A",
+                Pavarde = "B",
+                GimimoData = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                Adminas = false,
+                PrisijungimoId = "a.b.123",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("oldpass"),
+                SuperAdminas = false,
+                MustChangePassword = true,
+            });
+            db.RefreshTokens.Add(activeToken);
+            await db.SaveChangesAsync();
+        });
+
+        var client = _factory.CreateClient().AsUser(userId);
+        var res = await client.PutAsJsonAsync($"/api/Naudotojas/changePassword/{userId}", new
+        {
+            currentPassword = "oldpass",
+            newPassword = "newpass",
+        });
+        Assert.Equal(HttpStatusCode.NoContent, res.StatusCode);
+
+        await _factory.WithDbContextAsync(async db =>
+        {
+            var user = await db.Naudotojai.FindAsync(userId);
+            Assert.NotNull(user);
+            Assert.False(user!.MustChangePassword);
+
+            var token = await db.RefreshTokens.FindAsync(activeToken.Id);
+            Assert.NotNull(token);
+            Assert.NotNull(token!.Revoked);
+        });
+    }
+
+    [Fact]
+    public async Task AdminSetPassword_Works_And_Marks_MustChangePassword_And_Revokes_RefreshTokens()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var targetUserId = Guid.NewGuid();
+        var activeToken = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            Token = "t1",
+            Expires = DateTime.UtcNow.AddDays(1),
+            Revoked = null,
+            NaudotojasId = targetUserId,
+        };
+
+        await _factory.WithDbContextAsync(async db =>
+        {
+            db.Naudotojai.Add(new Naudotojas
+            {
+                Id = targetUserId,
+                Vardas = "A",
+                Pavarde = "B",
+                GimimoData = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                Adminas = false,
+                PrisijungimoId = "a.b.123",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("oldpass"),
+                SuperAdminas = false,
+                MustChangePassword = false,
+            });
+            db.RefreshTokens.Add(activeToken);
+            await db.SaveChangesAsync();
+        });
+
+        var client = _factory.CreateClient().AsAdmin();
+        var res = await client.PutAsJsonAsync($"/api/Naudotojas/setPassword/{targetUserId}", new { newPassword = "newpass" });
+        Assert.Equal(HttpStatusCode.NoContent, res.StatusCode);
+
+        await _factory.WithDbContextAsync(async db =>
+        {
+            var user = await db.Naudotojai.FindAsync(targetUserId);
+            Assert.NotNull(user);
+            Assert.True(user!.MustChangePassword);
+
+            var token = await db.RefreshTokens.FindAsync(activeToken.Id);
+            Assert.NotNull(token);
+            Assert.NotNull(token!.Revoked);
+        });
+    }
+
+    [Fact]
+    public async Task Create_Returns_BadRequest_When_Name_Missing()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var client = _factory.CreateClient().AsAdmin();
+        var res = await client.PostAsJsonAsync("/api/Naudotojas", new
+        {
+            vardas = "",
+            pavarde = "Jonaitis",
+            gimimoData = new DateTime(2000, 1, 1),
+            adminas = false,
+            password = "secret1",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_Returns_BadRequest_When_Password_Too_Short()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var client = _factory.CreateClient().AsAdmin();
+        var res = await client.PostAsJsonAsync("/api/Naudotojas", new
+        {
+            vardas = "Jonas",
+            pavarde = "Jonaitis",
+            gimimoData = new DateTime(2000, 1, 1),
+            adminas = false,
+            password = "123",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangePassword_Returns_BadRequest_When_Fields_Missing()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var userId = Guid.NewGuid();
+        await _factory.WithDbContextAsync(async db =>
+        {
+            db.Naudotojai.Add(new Naudotojas
+            {
+                Id = userId,
+                Vardas = "A",
+                Pavarde = "B",
+                GimimoData = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                Adminas = false,
+                PrisijungimoId = "a.b.123",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("oldpass"),
+                SuperAdminas = false,
+                MustChangePassword = true,
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var client = _factory.CreateClient().AsUser(userId);
+        var res = await client.PutAsJsonAsync($"/api/Naudotojas/changePassword/{userId}", new
+        {
+            currentPassword = "",
+            newPassword = "",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangePassword_Returns_NotFound_When_Target_User_Does_Not_Exist()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var userId = Guid.NewGuid();
+        var client = _factory.CreateClient().AsUser(userId);
+
+        var res = await client.PutAsJsonAsync($"/api/Naudotojas/changePassword/{userId}", new
+        {
+            currentPassword = "oldpass",
+            newPassword = "newpass",
+        });
+
+        Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminSetPassword_Returns_Forbidden_When_Target_Is_Admin_And_Caller_Is_Not_SuperAdmin()
+    {
+        await _factory.ResetDatabaseAsync();
+
+        var targetUserId = Guid.NewGuid();
+        await _factory.WithDbContextAsync(async db =>
+        {
+            db.Naudotojai.Add(new Naudotojas
+            {
+                Id = targetUserId,
+                Vardas = "Admin",
+                Pavarde = "User",
+                GimimoData = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                Adminas = true,
+                PrisijungimoId = "admin.user",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("oldpass"),
+                SuperAdminas = false,
+                MustChangePassword = false,
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var client = _factory.CreateClient().AsAdmin();
+        var res = await client.PutAsJsonAsync($"/api/Naudotojas/setPassword/{targetUserId}", new { newPassword = "newpass" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
     }
 }
