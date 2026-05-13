@@ -20,10 +20,6 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        // Control the authenticated user's identity via headers.
-        // - X-Test-UserId: guid (defaults to a fixed guid for determinism)
-        // - X-Test-Admin: true/false (default false)
-        // - X-Test-SuperAdmin: true/false (default false)
 
         var userId = Request.Headers.TryGetValue("X-Test-UserId", out var userIdHeader)
             && Guid.TryParse(userIdHeader.ToString(), out var parsed)

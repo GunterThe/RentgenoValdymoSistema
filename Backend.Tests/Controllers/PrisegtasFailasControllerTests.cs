@@ -328,7 +328,6 @@ public sealed class PrisegtasFailasControllerTests : IClassFixture<CustomWebAppl
         }
         finally
         {
-            // Cleanup both DB row and physical file.
             await client.DeleteAsync($"/api/PrisegtasFailas/{created.Id}");
         }
     }
@@ -436,14 +435,12 @@ public sealed class PrisegtasFailasControllerTests : IClassFixture<CustomWebAppl
             Assert.Equal(second.Id, items[0].Id);
         });
 
-        // Best-effort verification: old physical file should be gone after replace.
         if (!string.IsNullOrWhiteSpace(firstPath))
         {
             var abs = Path.Combine(Directory.GetCurrentDirectory(), firstPath);
             Assert.False(System.IO.File.Exists(abs));
         }
 
-        // Cleanup new file.
         await client.DeleteAsync($"/api/PrisegtasFailas/{second.Id}");
     }
 }

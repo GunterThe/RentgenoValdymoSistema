@@ -15,8 +15,6 @@ public sealed class TestAppDbContext : AppDbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // SQLite doesn't accept schema-qualified type names like "public.testotipas".
-        // Keep production mapping in Backend, but override it for integration tests.
         modelBuilder.Entity<Testas>()
             .Property(t => t.Tipas)
             .HasColumnType("TEXT");

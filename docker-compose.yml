@@ -7,7 +7,6 @@ services:
       POSTGRES_PASSWORD: admin
     volumes:
       - db_data_pg18:/var/lib/postgresql
-      # Initialize schema/data on first run
       - ./Backend/sql/rentgenai.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d rentgenai"]
@@ -25,7 +24,6 @@ services:
       ConnectionStrings__Default: Host=db;Port=5432;Database=rentgenai;Username=postgres;Password=admin
       Jwt__Issuer: SutarciuKontroleSistema
       Jwt__Audience: SutarciuKontroleSistema
-      # Override by exporting JWT_KEY in your shell (recommended)
       Jwt__Key: ${JWT_KEY:-K5kQv4e2fPz8Yt1Rk9M3sV7aB1cN6xD4pF0gH3jL8qT2wZ7rU5iO1mE9sC6vB3nP}
       Jwt__AccessTokenMinutes: 15
       Jwt__RefreshTokenDays: 7
@@ -35,7 +33,6 @@ services:
     volumes:
       - uploads:/app/uploads
     ports:
-      # Optional: direct API access from LAN (http://<your-ip>:5158)
       - "5158:8080"
 
   web:
@@ -45,7 +42,6 @@ services:
     depends_on:
       - backend
     ports:
-      # Main UI entry point for LAN: http://<your-ip>:8080
       - "8080:80"
 
 volumes:

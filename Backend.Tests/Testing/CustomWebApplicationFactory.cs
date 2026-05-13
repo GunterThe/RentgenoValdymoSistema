@@ -22,7 +22,6 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
-            // Satisfy Program.cs startup checks (these get overridden in tests anyway).
             var overrides = new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Default"] = "Host=localhost;Database=dummy;Username=dummy;Password=dummy",
@@ -38,7 +37,6 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            // Replace the DB with a shared SQLite in-memory database.
             services.RemoveAll(typeof(DbContextOptions<AppDbContext>));
             services.RemoveAll(typeof(IDbContextOptionsConfiguration<AppDbContext>));
             services.RemoveAll(typeof(AppDbContext));
@@ -59,7 +57,6 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             services.Replace(ServiceDescriptor.Scoped<AppDbContext, TestAppDbContext>());
 
-            // Replace auth with a simple header-driven scheme.
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
@@ -69,7 +66,6 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 _ => { }
             );
 
-            // Ensure schema exists.
             using var scope = services.BuildServiceProvider().CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Database.EnsureCreated();
