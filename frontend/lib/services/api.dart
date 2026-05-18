@@ -479,6 +479,26 @@ class Api {
     }
   }
 
+  static Future<void> updateSablonasTestas(
+    int sablonasId,
+    int testasId,
+    Map<String, dynamic> payload,
+  ) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(
+        Uri.parse('$baseUrl/api/sablonastestas/$sablonasId/$testasId'),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+    });
+    if (res.statusCode != 204) {
+      throw Exception(
+        'Failed to update sablonastestas (${res.statusCode}): ${res.body}',
+      );
+    }
+  }
+
   static Future<Map<String, dynamic>> createTestasIrasas(
     Map<String, dynamic> payload,
   ) async {

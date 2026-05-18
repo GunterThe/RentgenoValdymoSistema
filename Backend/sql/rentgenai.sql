@@ -240,7 +240,8 @@ ALTER SEQUENCE public.sablonas_id_seq OWNED BY public.sablonas.id;
 
 CREATE TABLE public.sablonas_testas (
     testasid integer NOT NULL,
-    sablonasid integer NOT NULL
+    sablonasid integer NOT NULL,
+    eile integer DEFAULT 1 NOT NULL
 );
 
 

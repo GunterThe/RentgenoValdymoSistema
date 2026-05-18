@@ -50,6 +50,7 @@ class _SablonaiPageState extends State<SablonaiPage> {
 
     List<Testas> testai = const <Testas>[];
     Set<int> initialSelected = <int>{};
+    List<int> initialSelectedOrder = <int>[];
 
     try {
       final results = await Future.wait([
@@ -69,6 +70,7 @@ class _SablonaiPageState extends State<SablonaiPage> {
       final links = (results[1]).cast<dynamic>();
       if (existing != null) {
         final selected = <int>{};
+        final ordered = <({int testasId, int? eile})>[];
         for (final raw in links) {
           if (raw is! Map<String, dynamic>) continue;
           final sid =
@@ -81,9 +83,26 @@ class _SablonaiPageState extends State<SablonaiPage> {
               raw['Testasid'] ??
               raw['testasId'] ??
               raw['TestasId']);
+          final eile =
+              (raw['eile'] ?? raw['Eile'] ?? raw['order'] ?? raw['Order']);
           if (sid is int && tid is int && sid == existing.id) selected.add(tid);
+
+          if (sid is int && tid is int && sid == existing.id) {
+            ordered.add(
+              (testasId: tid, eile: (eile is int && eile > 0) ? eile : null),
+            );
+          }
         }
         initialSelected = selected;
+
+        ordered.sort((a, b) {
+          final ae = a.eile ?? 1 << 30;
+          final be = b.eile ?? 1 << 30;
+          final cmp = ae.compareTo(be);
+          if (cmp != 0) return cmp;
+          return a.testasId.compareTo(b.testasId);
+        });
+        initialSelectedOrder = ordered.map((e) => e.testasId).toList();
       }
     } catch (e) {
       if (!mounted) return;
@@ -94,97 +113,216 @@ class _SablonaiPageState extends State<SablonaiPage> {
     }
 
     final selectedTestIds = <int>{...initialSelected};
+    final selectedTestOrder = <int>[...initialSelectedOrder];
+    for (final id in selectedTestIds) {
+      if (!selectedTestOrder.contains(id)) selectedTestOrder.add(id);
+    }
+
+    final testById = <int, Testas>{for (final t in testai) t.id: t};
 
     final ok = await showDialog<bool?>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => AlertDialog(
-          title: Text(
-            existing == null ? 'Naujas šablonas' : 'Redaguoti šabloną',
-          ),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextField(
-                  controller: ctrl,
-                  decoration: const InputDecoration(labelText: 'Pavadinimas'),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Testai',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    if (testai.isNotEmpty)
-                      Text(
-                        '${selectedTestIds.length}/${testai.length}',
-                        style: TextStyle(
-                          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+        builder: (ctx, setLocal) => DefaultTabController(
+          length: 2,
+          child: AlertDialog(
+            title: Text(
+              existing == null ? 'Naujas šablonas' : 'Redaguoti šabloną',
+            ),
+            content: SizedBox(
+              width: 520,
+              height: 560,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: ctrl,
+                    decoration: const InputDecoration(labelText: 'Pavadinimas'),
+                  ),
+                  const SizedBox(height: 12),
+                  TabBar(
+                    tabs: const [
+                      Tab(text: 'Pasirinkimas'),
+                      Tab(text: 'Rikiavimas'),
+                    ],
+                    labelColor: Theme.of(ctx).colorScheme.primary,
+                    unselectedLabelColor:
+                        Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'Testai',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                if (testai.isNotEmpty)
+                                  Text(
+                                    '${selectedTestIds.length}/${testai.length}',
+                                    style: TextStyle(
+                                      color: Theme.of(ctx)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            if (testai.isEmpty)
+                              Text(
+                                'Nėra testų',
+                                style: TextStyle(
+                                  color: Theme.of(ctx)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              )
+                            else
+                              Expanded(
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: ListView.builder(
+                                    itemCount: testai.length,
+                                    itemBuilder: (ctx, index) {
+                                      final t = testai[index];
+                                      final checked =
+                                          selectedTestIds.contains(t.id);
+                                      return CheckboxListTile(
+                                        dense: true,
+                                        controlAffinity:
+                                            ListTileControlAffinity.leading,
+                                        value: checked,
+                                        title: Text(t.testotekstas),
+                                        onChanged: (v) {
+                                          setLocal(() {
+                                            final next = v ?? false;
+                                            if (next) {
+                                              if (selectedTestIds.add(t.id)) {
+                                                if (!selectedTestOrder
+                                                    .contains(t.id)) {
+                                                  selectedTestOrder.add(t.id);
+                                                }
+                                              }
+                                            } else {
+                                              if (selectedTestIds
+                                                  .remove(t.id)) {
+                                                selectedTestOrder.remove(t.id);
+                                              }
+                                            }
+                                          });
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (testai.isEmpty)
-                  Text(
-                    'Nėra testų',
-                    style: TextStyle(
-                      color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                    ),
-                  )
-                else
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 320),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: testai.length,
-                        itemBuilder: (ctx, index) {
-                          final t = testai[index];
-                          final checked = selectedTestIds.contains(t.id);
-                          return CheckboxListTile(
-                            dense: true,
-                            controlAffinity: ListTileControlAffinity.leading,
-                            value: checked,
-                            title: Text(t.testotekstas),
-                            onChanged: (v) {
-                              setLocal(() {
-                                final next = v ?? false;
-                                if (next) {
-                                  selectedTestIds.add(t.id);
-                                } else {
-                                  selectedTestIds.remove(t.id);
-                                }
-                              });
-                            },
-                          );
-                        },
-                      ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'Pasirinkti testai',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                if (testai.isNotEmpty)
+                                  Text(
+                                    '${selectedTestOrder.length}',
+                                    style: TextStyle(
+                                      color: Theme.of(ctx)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Vilkite, kad pakeistumėte eiliškumą.',
+                              style: TextStyle(
+                                color: Theme.of(ctx)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (selectedTestOrder.isEmpty)
+                              Text(
+                                'Pasirinkite testus pirmoje kortelėje.',
+                                style: TextStyle(
+                                  color: Theme.of(ctx)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              )
+                            else
+                              Expanded(
+                                child: ReorderableListView.builder(
+                                  buildDefaultDragHandles: false,
+                                  itemCount: selectedTestOrder.length,
+                                  onReorder: (oldIndex, newIndex) {
+                                    setLocal(() {
+                                      if (newIndex > oldIndex) newIndex -= 1;
+                                      final moved = selectedTestOrder
+                                          .removeAt(oldIndex);
+                                      selectedTestOrder.insert(newIndex, moved);
+                                    });
+                                  },
+                                  itemBuilder: (ctx, index) {
+                                    final testId = selectedTestOrder[index];
+                                    final t = testById[testId];
+                                    return ListTile(
+                                      key: ValueKey(testId),
+                                      dense: true,
+                                      title: Text(
+                                        t?.testotekstas ?? 'Testas #$testId',
+                                      ),
+                                      trailing: ReorderableDragStartListener(
+                                        index: index,
+                                        child: const Icon(Icons.drag_handle),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Atšaukti'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (ctrl.text.trim().isEmpty) return;
+                  Navigator.of(ctx).pop(true);
+                },
+                child: const Text('Išsaugoti'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Atšaukti'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (ctrl.text.trim().isEmpty) return;
-                Navigator.of(ctx).pop(true);
-              },
-              child: const Text('Išsaugoti'),
-            ),
-          ],
         ),
       ),
     );
@@ -197,10 +335,12 @@ class _SablonaiPageState extends State<SablonaiPage> {
         final created = await Api.createSablonas({'pavadinimas': name});
         final it = Sablonas.fromJson(created);
 
-        for (final testasId in selectedTestIds) {
+        for (var i = 0; i < selectedTestOrder.length; i++) {
+          final testasId = selectedTestOrder[i];
           await Api.createSablonasTestas({
             'sablonasid': it.id,
             'testasid': testasId,
+            'eile': i + 1,
           });
         }
 
@@ -232,6 +372,16 @@ class _SablonaiPageState extends State<SablonaiPage> {
           await Api.createSablonasTestas({
             'sablonasid': existing.id,
             'testasid': testasId,
+          });
+        }
+
+        for (var i = 0; i < selectedTestOrder.length; i++) {
+          final testasId = selectedTestOrder[i];
+          if (!selectedTestIds.contains(testasId)) continue;
+          await Api.updateSablonasTestas(existing.id, testasId, {
+            'sablonasid': existing.id,
+            'testasid': testasId,
+            'eile': i + 1,
           });
         }
 
