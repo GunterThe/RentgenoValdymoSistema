@@ -935,10 +935,15 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                                       IconButton(
                                                         tooltip: 'Peržiūrėti',
                                                         onPressed: () =>
-                                                            showPlaceholder(
-                                                              context,
-                                                              'Peržiūrėti įrašą',
+                                                            Navigator.of(context)
+                                                                .push(
+                                                          MaterialPageRoute(
+                                                            builder: (_) =>
+                                                                IrasasZingsniaiPage(
+                                                              irasas: it,
                                                             ),
+                                                          ),
+                                                        ),
                                                         icon: const Icon(
                                                           Icons
                                                               .remove_red_eye_outlined,
@@ -971,23 +976,6 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                                         icon: const Icon(
                                                           Icons
                                                               .playlist_remove,
-                                                        ),
-                                                      ),
-                                                      IconButton(
-                                                        tooltip: 'Žingsniai',
-                                                        onPressed: () =>
-                                                            Navigator.of(context)
-                                                                .push(
-                                                          MaterialPageRoute(
-                                                            builder: (_) =>
-                                                                IrasasZingsniaiPage(
-                                                              irasas: it,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        icon: const Icon(
-                                                          Icons
-                                                              .format_list_numbered,
                                                         ),
                                                       ),
                                                       IconButton(
@@ -1080,10 +1068,16 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                                       IconButton(
                                                         tooltip: 'Peržiūrėti',
                                                         onPressed: () =>
-                                                            showPlaceholder(
-                                                              context,
-                                                              'Peržiūrėti įrašą',
-                                                            ),
+                                                              Navigator.of(
+                                                                context,
+                                                              ).push(
+                                                                MaterialPageRoute(
+                                                                  builder: (_) =>
+                                                                      IrasasZingsniaiPage(
+                                                                    irasas: it,
+                                                                  ),
+                                                                ),
+                                                              ),
                                                         icon: const Icon(
                                                           Icons
                                                               .remove_red_eye_outlined,
@@ -1116,24 +1110,6 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                                         icon: const Icon(
                                                           Icons
                                                               .playlist_remove,
-                                                        ),
-                                                      ),
-                                                      IconButton(
-                                                        tooltip: 'Žingsniai',
-                                                        onPressed: () =>
-                                                            Navigator.of(
-                                                              context,
-                                                            ).push(
-                                                              MaterialPageRoute(
-                                                                builder: (_) =>
-                                                                    IrasasZingsniaiPage(
-                                                                  irasas: it,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                        icon: const Icon(
-                                                          Icons
-                                                              .format_list_numbered,
                                                         ),
                                                       ),
                                                       IconButton(

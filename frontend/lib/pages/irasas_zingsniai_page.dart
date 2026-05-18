@@ -34,6 +34,8 @@ class _StepDraft {
 class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
   bool _loading = true;
 
+  static const double _imagePreviewHeight = 180;
+
   List<TestasIrasas> _links = [];
   Map<int, Testas> _testaiById = {};
   Map<int, List<ZingsnisTemplate>> _templatesByTestasId = {};
@@ -606,6 +608,49 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  void _openFullResImage(String url) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: InteractiveViewer(
+          child: Image.network(
+            url,
+            fit: BoxFit.contain,
+            errorBuilder: (context, _, _) => const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Nepavyko įkelti paveikslėlio'),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _imagePreview(String url) {
+    return SizedBox(
+      height: _imagePreviewHeight,
+      width: double.infinity,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Material(
+          child: InkWell(
+            onTap: () => _openFullResImage(url),
+            child: Container(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              alignment: Alignment.center,
+              child: Image.network(
+                url,
+                fit: BoxFit.contain,
+                errorBuilder: (context, _, _) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     for (final d in _drafts.values) {
@@ -698,6 +743,15 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                       final draft = _drafts[key]!;
                                       final existing = _zingsniaiByKey[key];
                                       final zingsnisId = existing?.id;
+
+                                      final komentarasLabel =
+                                        tpl.komentarasPrivalomas
+                                          ? 'Komentaras*'
+                                          : 'Komentaras';
+                                      final paveikslelisLabel =
+                                        tpl.nuotraukaPrivaloma
+                                          ? 'Paveikslėlis*'
+                                          : 'Paveikslėlis';
 
                                       final savedCompleted =
                                           existing?.completedAt != null;
@@ -812,19 +866,10 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                       bottom: 10,
                                                       top: 6,
                                                     ),
-                                                    child: ClipRRect(
-                                                      borderRadius:
-                                                          BorderRadius.circular(12),
-                                                      child: Image.network(
-                                                        Api.prisegtasFailasFileUri(
-                                                          img.id,
-                                                        ).toString(),
-                                                        fit: BoxFit.contain,
-                                                        errorBuilder:
-                                                            (context, _, _) =>
-                                                                const SizedBox
-                                                                    .shrink(),
-                                                      ),
+                                                    child: _imagePreview(
+                                                      Api.prisegtasFailasFileUri(
+                                                        img.id,
+                                                      ).toString(),
                                                     ),
                                                   );
                                                 },
@@ -861,10 +906,9 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                 controller:
                                                     draft.komentarasCtrl,
                                                 enabled: !locked,
-                                                decoration:
-                                                    const InputDecoration(
-                                                      labelText: 'Komentaras',
-                                                    ),
+                                                decoration: InputDecoration(
+                                                  labelText: komentarasLabel,
+                                                ),
                                                 minLines: 1,
                                                 maxLines: 3,
                                               ),
@@ -913,7 +957,7 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                 children: [
                                                   Expanded(
                                                     child: Text(
-                                                      'Failai',
+                                                      paveikslelisLabel,
                                                       style: TextStyle(
                                                         color: Theme.of(context)
                                                             .colorScheme
@@ -949,6 +993,26 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                   child:
                                                       LinearProgressIndicator(),
                                                 ),
+                                              if (zingsnisId != null)
+                                                ...(_failaiByZingsnisId[zingsnisId] ??
+                                                        const <PrisegtasFailas>[])
+                                                    .where(
+                                                      (f) => _isImageFileName(
+                                                        f.failoPav,
+                                                      ),
+                                                    )
+                                                    .map(
+                                                      (f) => Padding(
+                                                        padding: const EdgeInsets.only(
+                                                          bottom: 10,
+                                                        ),
+                                                        child: _imagePreview(
+                                                          Api.prisegtasFailasFileUri(
+                                                            f.id,
+                                                          ).toString(),
+                                                        ),
+                                                      ),
+                                                    ),
                                               if (zingsnisId != null)
                                                 ...(_failaiByZingsnisId[zingsnisId] ??
                                                         const <
