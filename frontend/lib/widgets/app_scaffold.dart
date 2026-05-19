@@ -51,6 +51,20 @@ class AppScaffold extends StatelessWidget {
     ];
   }
 
+  Widget _withFabScrollPadding(BuildContext context, Widget child) {
+    if (floatingActionButton == null) return child;
+
+    // FAB overlays the content. Add extra bottom padding so the last items
+    // (and their buttons) stay reachable on narrow/mobile screens.
+    //
+    // 88px is a conservative value that works for both regular and extended FAB.
+    final bottom = 88.0 + MediaQuery.viewPaddingOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -58,7 +72,7 @@ class AppScaffold extends StatelessWidget {
         title: Text(title),
         actions: [..._defaultActions(context), ...actions],
       ),
-      body: body,
+      body: _withFabScrollPadding(context, body),
       floatingActionButton: floatingActionButton,
       floatingActionButtonLocation: floatingActionButtonLocation,
     );
