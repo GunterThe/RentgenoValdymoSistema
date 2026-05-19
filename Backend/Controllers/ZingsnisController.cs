@@ -83,17 +83,31 @@ namespace Backend.Controllers
                 return "Nerastas testas/įrašas ryšys (testasIrasas).";
             }
 
-            var prevLinks = await _db.TestasIrasai
+            // Intra-test gating: if gate steps are configured for this TestasIrasas,
+            // all gate steps must be completed before completing any non-gate step.
+            var gateTemplateIds = await _db.TestasIrasasPrivalomiZingsniai
                 .AsNoTracking()
-                .Where(t => t.Irasasid == currentLink.Irasasid && t.Eile < currentLink.Eile)
-                .OrderBy(t => t.Eile)
+                .Where(x => x.TestasIrasasId == currentLink.Id)
+                .Select(x => x.ZingsnisTemplateId)
+                .Distinct()
                 .ToListAsync();
 
-            foreach (var prev in prevLinks)
+            if (gateTemplateIds.Count > 0 && !gateTemplateIds.Contains(zingsnis.ZingsnisTemplateId))
             {
-                if (!await IsTestasIrasasFullyCompletedAsync(prev))
+                var completedGateIds = await _db.Zingsniai
+                    .AsNoTracking()
+                    .Where(z => z.TestasIrasasId == currentLink.Id && z.CompletedAt != null && gateTemplateIds.Contains(z.ZingsnisTemplateId))
+                    .Select(z => z.ZingsnisTemplateId)
+                    .Distinct()
+                    .ToListAsync();
+
+                var completedSet = completedGateIds.ToHashSet();
+                foreach (var gateTplId in gateTemplateIds)
                 {
-                    return "Negalima užbaigti šio žingsnio, kol neužbaigtas ankstesnis testas ir visi jo žingsniai.";
+                    if (!completedSet.Contains(gateTplId))
+                    {
+                        return "Pirma užbaikite privalomus vartų žingsnius (pažymėtus kaip būtinius) ir tik tada tęskite kitus žingsnius.";
+                    }
                 }
             }
 

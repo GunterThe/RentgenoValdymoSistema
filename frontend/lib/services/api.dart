@@ -266,6 +266,43 @@ class Api {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  // TestasIrasas -> privalomi vartų žingsniai
+  static Future<List<dynamic>> fetchTestasIrasasPrivalomiZingsniai() async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(
+        Uri.parse('$baseUrl/api/testasirasasprivalomaszingsnistemplate'),
+        headers: h,
+      ),
+    );
+    if (res.statusCode != 200) {
+      throw Exception(
+        'Failed to load testasirasas privalomi zingsniai (${res.statusCode}): ${res.body}',
+      );
+    }
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<void> setTestasIrasasPrivalomiZingsniai(
+    int testasIrasasId,
+    List<int> zingsnisTemplateIds,
+  ) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(
+        Uri.parse(
+          '$baseUrl/api/testasirasasprivalomaszingsnistemplate/$testasIrasasId',
+        ),
+        headers: headers,
+        body: jsonEncode({'zingsnisTemplateIds': zingsnisTemplateIds}),
+      );
+    });
+    if (res.statusCode != 204) {
+      throw Exception(
+        'Failed to set privalomi zingsniai (${res.statusCode}): ${res.body}',
+      );
+    }
+  }
+
   static Future<void> updateIrasas(int id, Map<String, dynamic> payload) async {
     final res = await _requestWithRefresh((h) {
       final headers = {...h, 'Content-Type': 'application/json'};

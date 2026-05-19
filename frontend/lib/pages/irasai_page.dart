@@ -6,6 +6,7 @@ import '../models/sablonas.dart';
 import '../models/testas.dart';
 import '../models/testas_irasas.dart';
 import '../models/zingsnis.dart';
+import '../models/zingsnis_template.dart';
 import 'irasas_zingsniai_page.dart';
 import '../widgets/app_scaffold.dart';
 
@@ -403,6 +404,155 @@ class _IrasaiPageState extends State<IrasaiPage> {
     int? lokacijaId = lokacijos.first.id;
     int? sablonasId;
 
+    // Žingsnių vartai: per testą pasirenkami privalomi žingsniai (templates),
+    // kurie turi būti atlikti prieš leidžiant užbaigti kitus žingsnius.
+    final vartaiByTestasId = <int, Set<int>>{};
+
+    int vartaiCount() => vartaiByTestasId.values.fold<int>(
+      0,
+      (sum, set) => sum + set.length,
+    );
+
+    Future<void> pickVartaiForSablonas() async {
+      if (sablonasId == null) return;
+
+      try {
+        final results = await Future.wait([
+          Api.fetchSablonasTestai(),
+          Api.fetchZingsnisTemplates(),
+          Api.fetchTestai(),
+        ]);
+
+        final links = (results[0]).cast<dynamic>();
+        final templates = (results[1])
+            .map((e) => ZingsnisTemplate.fromJson(e as Map<String, dynamic>))
+            .toList();
+        final testai = (results[2])
+            .map((e) => Testas.fromJson(e as Map<String, dynamic>))
+            .toList();
+        final testById = {for (final t in testai) t.id: t};
+
+        final sablonasTestai = <({int testasId, int eile})>[];
+        for (final raw in links) {
+          if (raw is! Map<String, dynamic>) continue;
+          final sid =
+              (raw['sablonasid'] ??
+              raw['Sablonasid'] ??
+              raw['sablonasId'] ??
+              raw['SablonasId']);
+          final tid =
+              (raw['testasid'] ??
+              raw['Testasid'] ??
+              raw['testasId'] ??
+              raw['TestasId']);
+          final e = (raw['eile'] ?? raw['Eile']);
+
+          if (sid is int && tid is int && sid == sablonasId) {
+            sablonasTestai.add(
+              (testasId: tid, eile: (e is int && e > 0) ? e : 1 << 30),
+            );
+          }
+        }
+        sablonasTestai.sort((a, b) {
+          final c = a.eile.compareTo(b.eile);
+          if (c != 0) return c;
+          return a.testasId.compareTo(b.testasId);
+        });
+
+        final templatesByTest = <int, List<ZingsnisTemplate>>{};
+        for (final t in templates) {
+          templatesByTest.putIfAbsent(t.testasId, () => []).add(t);
+        }
+        for (final entry in templatesByTest.entries) {
+          entry.value.sort((a, b) => a.eile.compareTo(b.eile));
+        }
+
+        await showDialog<void>(
+          context: context,
+          builder: (dialogCtx) => StatefulBuilder(
+            builder: (dialogCtx, setLocalDialog) => AlertDialog(
+              title: const Text('Žingsnių vartai'),
+              content: SizedBox(
+                width: 560,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 520),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: sablonasTestai.length,
+                    itemBuilder: (dialogCtx, index) {
+                      final testasId = sablonasTestai[index].testasId;
+                      final testName =
+                          testById[testasId]?.testotekstas ?? 'Testas #$testasId';
+                      final tpls =
+                          templatesByTest[testasId] ??
+                          const <ZingsnisTemplate>[];
+
+                      vartaiByTestasId.putIfAbsent(testasId, () => <int>{});
+                      final selected = vartaiByTestasId[testasId]!;
+
+                      return ExpansionTile(
+                        title: Text(testName),
+                        subtitle: Text(
+                          selected.isEmpty
+                              ? 'Vartų nėra (visi žingsniai laisvi)'
+                              : 'Vartai: ${selected.length}',
+                        ),
+                        children: [
+                          if (tpls.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                              child: Text(
+                                'Šis testas neturi žingsnių šablonų',
+                                style: TextStyle(
+                                  color: Theme.of(dialogCtx)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                            )
+                          else
+                            ...tpls.map((tpl) {
+                              final checked = selected.contains(tpl.id);
+                              return CheckboxListTile(
+                                dense: true,
+                                value: checked,
+                                title: Text('${tpl.eile}. ${tpl.pavadinimas}'),
+                                subtitle: Text(tpl.aprasymas),
+                                onChanged: (v) {
+                                  setLocalDialog(() {
+                                    final next = v ?? false;
+                                    if (next) {
+                                      selected.add(tpl.id);
+                                    } else {
+                                      selected.remove(tpl.id);
+                                    }
+                                  });
+                                },
+                              );
+                            }),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                  child: const Text('Uždaryti'),
+                ),
+              ],
+            ),
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Klaida kraunant vartus: $e')),
+        );
+      }
+    }
+
     final ok = await showDialog<bool?>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -449,7 +599,24 @@ class _IrasaiPageState extends State<IrasaiPage> {
                     ),
                   ),
                 ],
-                onChanged: (v) => setLocal(() => sablonasId = v),
+                onChanged: (v) => setLocal(() {
+                  sablonasId = v;
+                  vartaiByTestasId.clear();
+                }),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed:
+                      sablonasId == null ? null : () => pickVartaiForSablonas(),
+                  icon: const Icon(Icons.lock_outline),
+                  label: Text(
+                    vartaiCount() == 0
+                        ? 'Žingsnių vartai'
+                        : 'Žingsnių vartai (${vartaiCount()})',
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -524,6 +691,15 @@ class _IrasaiPageState extends State<IrasaiPage> {
       'pabaiga': pabaiga?.toUtc().toIso8601String(),
       'lokacijaId': lokacijaId,
       'sablonasId': sablonasId,
+      'zingsniuVartai': vartaiByTestasId.entries
+          .where((e) => e.value.isNotEmpty)
+          .map(
+            (e) => {
+              'testasId': e.key,
+              'zingsnisTemplateIds': (e.value.toList()..sort()),
+            },
+          )
+          .toList(),
     };
 
     if ((payload['pavadinimas'] as String).isEmpty ||

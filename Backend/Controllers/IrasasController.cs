@@ -23,7 +23,14 @@ namespace Backend.Controllers
 			public string Pavadinimas { get; set; } = null!;
 			public int LokacijaId { get; set; }
 			public int? SablonasId { get; set; }
+            public List<ZingsniuVartuKonfiguracija>? ZingsniuVartai { get; set; }
 		}
+
+        public sealed class ZingsniuVartuKonfiguracija
+        {
+            public int TestasId { get; set; }
+            public List<int> ZingsnisTemplateIds { get; set; } = new();
+        }
 
         private static DateTime EnsureUtc(DateTime dt)
         {
@@ -90,7 +97,8 @@ namespace Backend.Controllers
                 var testasIds = await _db.SablonasTestai
                     .AsNoTracking()
                     .Where(st => st.Sablonasid == request.SablonasId.Value)
-                    .OrderBy(st => st.Testasid)
+                    .OrderBy(st => st.Eile)
+                    .ThenBy(st => st.Testasid)
                     .Select(st => st.Testasid)
                     .Distinct()
                     .ToListAsync();
@@ -109,6 +117,66 @@ namespace Backend.Controllers
                     }
                     _db.TestasIrasai.AddRange(links);
                     await _db.SaveChangesAsync();
+
+                    var vartai = request.ZingsniuVartai ?? new List<ZingsniuVartuKonfiguracija>();
+                    if (vartai.Count > 0)
+                    {
+                        var byTestasId = vartai
+                            .Where(v => v.TestasId > 0)
+                            .GroupBy(v => v.TestasId)
+                            .ToDictionary(
+                                g => g.Key,
+                                g => g.SelectMany(x => x.ZingsnisTemplateIds)
+                                    .Where(id => id > 0)
+                                    .Distinct()
+                                    .ToList()
+                            );
+
+                        if (byTestasId.Count > 0)
+                        {
+                            var allRequestedTplIds = byTestasId.Values.SelectMany(x => x).Distinct().ToList();
+                            if (allRequestedTplIds.Count > 0)
+                            {
+                                var templates = await _db.ZingsnisTemplate
+                                    .AsNoTracking()
+                                    .Where(t => allRequestedTplIds.Contains(t.Id))
+                                    .Select(t => new { t.Id, t.TestasId })
+                                    .ToListAsync();
+
+                                var templateToTest = templates.ToDictionary(x => x.Id, x => x.TestasId);
+
+                                foreach (var pair in byTestasId)
+                                {
+                                    var testasId = pair.Key;
+                                    foreach (var tplId in pair.Value)
+                                    {
+                                        if (!templateToTest.TryGetValue(tplId, out var tplTestasId) || tplTestasId != testasId)
+                                            return BadRequest(new { message = "One or more ZingsnisTemplateIds do not belong to the given testasId." });
+                                    }
+                                }
+                            }
+
+                            var gateRows = new List<TestasIrasasPrivalomasZingsnisTemplate>();
+                            foreach (var link in links)
+                            {
+                                if (!byTestasId.TryGetValue(link.Testasid, out var tplIds) || tplIds.Count == 0) continue;
+                                foreach (var tplId in tplIds)
+                                {
+                                    gateRows.Add(new TestasIrasasPrivalomasZingsnisTemplate
+                                    {
+                                        TestasIrasasId = link.Id,
+                                        ZingsnisTemplateId = tplId,
+                                    });
+                                }
+                            }
+
+                            if (gateRows.Count > 0)
+                            {
+                                _db.TestasIrasasPrivalomiZingsniai.AddRange(gateRows);
+                                await _db.SaveChangesAsync();
+                            }
+                        }
+                    }
                 }
             }
 

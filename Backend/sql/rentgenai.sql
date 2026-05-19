@@ -288,6 +288,15 @@ CREATE TABLE public.testasirasas (
     eile integer
 );
 
+-- Per-įrašas vartai (žingsniai, kurie turi būti atlikti prieš kitus)
+CREATE TABLE public.testasirasas_privalomas_zingsnis_template (
+    testasirasas_id integer NOT NULL,
+    zingsnis_template_id integer NOT NULL
+);
+
+
+ALTER TABLE public.testasirasas_privalomas_zingsnis_template OWNER TO postgres;
+
 
 ALTER TABLE public.testasirasas OWNER TO postgres;
 
@@ -734,6 +743,9 @@ ALTER TABLE ONLY public.testasirasas
 ALTER TABLE ONLY public.testasirasas
     ADD CONSTRAINT testasirasas_testasid_irasasid_unique UNIQUE (testasid, irasasid);
 
+ALTER TABLE ONLY public.testasirasas_privalomas_zingsnis_template
+    ADD CONSTRAINT pk_testasirasas_privalomas_zingsnis_template PRIMARY KEY (testasirasas_id, zingsnis_template_id);
+
 
 --
 -- TOC entry 3444 (class 2606 OID 16722)
@@ -814,6 +826,12 @@ ALTER TABLE ONLY public.zingsnis_template
 
 ALTER TABLE ONLY public.zingsnis
     ADD CONSTRAINT fk_template_zingsnis FOREIGN KEY (zingsnis_template_id) REFERENCES public.zingsnis_template(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.testasirasas_privalomas_zingsnis_template
+    ADD CONSTRAINT fk_tipzt_testasirasas FOREIGN KEY (testasirasas_id) REFERENCES public.testasirasas(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.testasirasas_privalomas_zingsnis_template
+    ADD CONSTRAINT fk_tipzt_zingsnis_template FOREIGN KEY (zingsnis_template_id) REFERENCES public.zingsnis_template(id) ON DELETE CASCADE;
 
 
 --

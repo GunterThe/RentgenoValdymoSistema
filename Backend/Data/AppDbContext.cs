@@ -23,6 +23,7 @@ namespace Backend.Data
         public DbSet<Lokacija> Lokacijos { get; set; } = null!;
         public DbSet<Sablonas> Sablonai { get; set; } = null!;
         public DbSet<SablonasTestas> SablonasTestai { get; set; } = null!;
+        public DbSet<TestasIrasasPrivalomasZingsnisTemplate> TestasIrasasPrivalomiZingsniai { get; set; } = null!;
         public DbSet<Zinute> Zinutes { get; set; } = null!;
         public DbSet<NaudotojasZinute> NaudotojasZinute { get; set; } = null!;
 
@@ -72,6 +73,21 @@ namespace Backend.Data
             modelBuilder.Entity<TestasIrasas>()
                 .HasIndex(t => new { t.Testasid, t.Irasasid })
                 .IsUnique();
+
+            modelBuilder.Entity<TestasIrasasPrivalomasZingsnisTemplate>()
+                .HasKey(x => new { x.TestasIrasasId, x.ZingsnisTemplateId });
+
+            modelBuilder.Entity<TestasIrasasPrivalomasZingsnisTemplate>()
+                .HasOne(x => x.TestasIrasas)
+                .WithMany()
+                .HasForeignKey(x => x.TestasIrasasId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TestasIrasasPrivalomasZingsnisTemplate>()
+                .HasOne(x => x.ZingsnisTemplate)
+                .WithMany()
+                .HasForeignKey(x => x.ZingsnisTemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<PrisegtasFailas>()
                 .HasOne(p => p.Zingsnis)

@@ -52,6 +52,8 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
 
   final Map<String, _StepDraft> _drafts = {};
 
+  final Map<int, Set<int>> _gateTplIdsByLinkId = {};
+
   final Set<String> _creatingZingsnisKeys = {};
 
   static const _emptyGuid = '00000000-0000-0000-0000-000000000000';
@@ -103,32 +105,25 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
     }
   }
 
-  bool _isTestasIrasasFullyCompleted(TestasIrasas link) {
-    final templates =
-        _templatesByTestasId[link.testasId] ?? const <ZingsnisTemplate>[];
-    if (templates.isEmpty) return true;
-    for (final tpl in templates) {
-      final z = _zingsniaiByKey[_k(link.id, tpl.id)];
+  Set<int> _gateTplIdsForLink(TestasIrasas link) =>
+      _gateTplIdsByLinkId[link.id] ?? const <int>{};
+
+  bool _areGatesCompleted(TestasIrasas link) {
+    final gateIds = _gateTplIdsForLink(link);
+    if (gateIds.isEmpty) return true;
+    for (final tplId in gateIds) {
+      final z = _zingsniaiByKey[_k(link.id, tplId)];
       if (z?.completedAt == null) return false;
     }
     return true;
   }
 
-  String? _blockReasonForLink(TestasIrasas link) {
-    final sorted = _sortedLinks();
-    final idx = sorted.indexWhere((l) => l.id == link.id);
-    if (idx <= 0) return null;
-
-    for (var i = 0; i < idx; i++) {
-      final prev = sorted[i];
-      if (!_isTestasIrasasFullyCompleted(prev)) {
-        final prevName =
-            _testaiById[prev.testasId]?.testotekstas ??
-            'Testas #${prev.testasId}';
-        return 'Pirma užbaikite ankstesnį testą ir jo žingsnius: $prevName';
-      }
-    }
-    return null;
+  String? _gateBlockReason({required TestasIrasas link, required ZingsnisTemplate template}) {
+    final gateIds = _gateTplIdsForLink(link);
+    if (gateIds.isEmpty) return null;
+    if (gateIds.contains(template.id)) return null;
+    if (_areGatesCompleted(link)) return null;
+    return 'Pirma užbaikite vartų žingsnius (pažymėtus kaip privalomus).';
   }
 
   @override
@@ -181,6 +176,7 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
         Api.fetchTestai(),
         Api.fetchZingsnisTemplates(),
         Api.fetchZingsniai(),
+        Api.fetchTestasIrasasPrivalomiZingsniai(),
       ]);
 
       final allLinks = (results[0])
@@ -219,12 +215,30 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
         zingsniaiByKey[_k(z.testasIrasasId, z.zingsnisTemplateId)] = z;
       }
 
+      final linkIds = links.map((l) => l.id).toSet();
+      final gateRows = (results[4]).cast<dynamic>();
+      final gateByLink = <int, Set<int>>{};
+      for (final raw in gateRows) {
+        if (raw is! Map<String, dynamic>) continue;
+        final lid =
+            (raw['testasIrasasId'] ?? raw['TestasIrasasId'] ?? raw['testasirasas_id']);
+        final tid =
+            (raw['zingsnisTemplateId'] ?? raw['ZingsnisTemplateId'] ?? raw['zingsnis_template_id']);
+        if (lid is int && tid is int && linkIds.contains(lid)) {
+          gateByLink.putIfAbsent(lid, () => <int>{}).add(tid);
+        }
+      }
+
       if (!mounted) return;
       setState(() {
         _links = links;
         _testaiById = testaiById;
         _templatesByTestasId = templatesByTest;
         _zingsniaiByKey = zingsniaiByKey;
+
+        _gateTplIdsByLinkId
+          ..clear()
+          ..addAll(gateByLink);
 
         _drafts.clear();
         for (final link in links) {
@@ -254,17 +268,19 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
     required TestasIrasas link,
     required ZingsnisTemplate template,
   }) async {
-    final blockReason = _blockReasonForLink(link);
-    if (blockReason != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(blockReason)));
-      return;
-    }
-
     final key = _k(link.id, template.id);
     final draft = _drafts[key];
     if (draft == null) return;
+
+    if (draft.completed) {
+      final gateReason = _gateBlockReason(link: link, template: template);
+      if (gateReason != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(gateReason)),
+        );
+        return;
+      }
+    }
 
     final komentaras = draft.komentarasCtrl.text.trim();
     var completedAt = draft.completed ? DateTime.now().toUtc() : null;
@@ -693,12 +709,13 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                             const SizedBox(height: 12),
                         itemBuilder: (ctx, i) {
                           final link = sortedLinks[i];
-                          final blockReason = _blockReasonForLink(link);
-                          final locked = blockReason != null;
                           final testas = _testaiById[link.testasId];
                           final templates =
                               _templatesByTestasId[link.testasId] ??
                               const <ZingsnisTemplate>[];
+
+                          final gateIds = _gateTplIdsForLink(link);
+                          final gatesCompleted = _areGatesCompleted(link);
 
                           return Card(
                             child: Padding(
@@ -714,15 +731,15 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                  if (locked)
+                                  if (gateIds.isNotEmpty && !gatesCompleted)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 6),
                                       child: Text(
-                                        blockReason,
+                                        'Vartai aktyvūs: pirma užbaikite pažymėtus vartų žingsnius.',
                                         style: TextStyle(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.error,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .error,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -739,6 +756,13 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                     )
                                   else
                                     ...templates.map((tpl) {
+                                      final gateIdsForLink = _gateTplIdsForLink(link);
+                                      final isGateStep = gateIdsForLink.contains(tpl.id);
+                                      final completionLocked =
+                                          gateIdsForLink.isNotEmpty &&
+                                          !isGateStep &&
+                                          !_areGatesCompleted(link);
+
                                       final key = _k(link.id, tpl.id);
                                       final draft = _drafts[key]!;
                                       final existing = _zingsniaiByKey[key];
@@ -801,7 +825,7 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                               ).colorScheme.onSurfaceVariant,
                                             ),
                                             title: Text(
-                                              '${tpl.eile}. ${tpl.pavadinimas}',
+                                              '${tpl.eile}. ${tpl.pavadinimas}${isGateStep ? '*' : ''}',
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.w700,
                                               ),
@@ -833,6 +857,28 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                   12,
                                                 ),
                                             children: [
+                                              if (completionLocked)
+                                                Padding(
+                                                  padding: const EdgeInsets.only(
+                                                    top: 6,
+                                                    bottom: 6,
+                                                  ),
+                                                  child: Align(
+                                                    alignment:
+                                                        Alignment.centerLeft,
+                                                    child: Text(
+                                                      'Užbaigimui blokuojama: pirma užbaikite vartų žingsnius.',
+                                                      style: TextStyle(
+                                                        color:
+                                                            Theme.of(context)
+                                                                .colorScheme
+                                                                .error,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
                                               if (_loadingFailaiForTemplate
                                                   .contains(tpl.id))
                                                 const Padding(
@@ -905,7 +951,7 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                               TextField(
                                                 controller:
                                                     draft.komentarasCtrl,
-                                                enabled: !locked,
+                                                enabled: true,
                                                 decoration: InputDecoration(
                                                   labelText: komentarasLabel,
                                                 ),
@@ -918,14 +964,25 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                   Expanded(
                                                     child: CheckboxListTile(
                                                       value: draft.completed,
-                                                      onChanged: locked
-                                                          ? null
-                                                          : (v) => setState(
-                                                              () =>
-                                                                  draft.completed =
-                                                                      (v ??
-                                                                      false),
+                                                      onChanged: (v) {
+                                                        final next = v ?? false;
+                                                        if (next && completionLocked) {
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Pirma užbaikite vartų žingsnius.',
+                                                              ),
                                                             ),
+                                                          );
+                                                          return;
+                                                        }
+                                                        setState(
+                                                          () => draft
+                                                              .completed = next,
+                                                        );
+                                                      },
                                                       controlAffinity:
                                                           ListTileControlAffinity
                                                               .leading,
@@ -937,12 +994,10 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                     ),
                                                   ),
                                                   FilledButton.icon(
-                                                    onPressed: locked
-                                                        ? null
-                                                        : () => _saveStep(
-                                                            link: link,
-                                                            template: tpl,
-                                                          ),
+                                                    onPressed: () => _saveStep(
+                                                      link: link,
+                                                      template: tpl,
+                                                    ),
                                                     icon: const Icon(
                                                       Icons.save,
                                                     ),
@@ -966,13 +1021,11 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                     ),
                                                   ),
                                                   FilledButton.icon(
-                                                    onPressed: locked
-                                                        ? null
-                                                        : () =>
-                                                              _attachFileForStep(
-                                                                link: link,
-                                                                template: tpl,
-                                                              ),
+                                                    onPressed: () =>
+                                                        _attachFileForStep(
+                                                          link: link,
+                                                          template: tpl,
+                                                        ),
                                                     icon: const Icon(
                                                       Icons.attach_file,
                                                     ),
@@ -1047,12 +1100,11 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                             IconButton(
                                                               tooltip:
                                                                   'Pašalinti',
-                                                              onPressed: locked
-                                                                  ? null
-                                                                  : () => _deleteFailas(
-                                                                      zingsnisId,
-                                                                      f,
-                                                                    ),
+                                                              onPressed: () =>
+                                                                  _deleteFailas(
+                                                                    zingsnisId,
+                                                                    f,
+                                                                  ),
                                                               icon: const Icon(
                                                                 Icons
                                                                     .delete_outline,
