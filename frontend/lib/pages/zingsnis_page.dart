@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/testas.dart';
+import '../models/prisegtas_failas.dart';
 import '../models/zingsnis_template.dart';
 import '../services/api.dart';
 import '../widgets/app_scaffold.dart';
@@ -74,7 +75,26 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
       existing?.nuotraukaPrivaloma ?? false,
     );
 
-    PlatformFile? pickedImage;
+    List<PlatformFile> pickedImages = const <PlatformFile>[];
+
+    List<PrisegtasFailas> existingTemplateFiles = const <PrisegtasFailas>[];
+    var loadingExistingFiles = false;
+    final deletingExistingIds = <String>{};
+
+    if (existing != null) {
+      loadingExistingFiles = true;
+      try {
+        final raw = await Api.fetchPrisegtiFailaiByZingsnisTemplate(existing.id);
+        existingTemplateFiles = raw
+            .whereType<Map<String, dynamic>>()
+            .map(PrisegtasFailas.fromJson)
+            .toList();
+      } catch (_) {
+        existingTemplateFiles = const <PrisegtasFailas>[];
+      } finally {
+        loadingExistingFiles = false;
+      }
+    }
 
     final ok = await showDialog<bool?>(
       context: context,
@@ -130,17 +150,22 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
                       final res = await FilePicker.platform.pickFiles(
                         type: FileType.image,
                         withData: true,
+                        allowMultiple: true,
                       );
                       if (res == null || res.files.isEmpty) return;
-                      setStateDialog(() => pickedImage = res.files.single);
+                      setStateDialog(() => pickedImages = res.files);
                     },
                     icon: const Icon(Icons.image_outlined),
-                    label: const Text('Pridėti paveikslėlį'),
+                    label: const Text('Pridėti paveikslėlius'),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      pickedImage?.name ?? 'Nepasirinkta',
+                      pickedImages.isEmpty
+                          ? 'Nepasirinkta'
+                          : pickedImages.length == 1
+                              ? pickedImages.single.name
+                              : 'Pasirinkta: ${pickedImages.length}',
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -149,6 +174,200 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
                   ),
                 ],
               ),
+              if (existing != null) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Esami failai:',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                if (loadingExistingFiles)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: LinearProgressIndicator(),
+                  )
+                else if (existingTemplateFiles.isEmpty)
+                  Text(
+                    'Nėra prisegtų failų',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  )
+                else
+                  SizedBox(
+                    height: 180,
+                    child: SingleChildScrollView(
+                      primary: false,
+                      child: Column(
+                        children: List.generate(
+                          existingTemplateFiles.length,
+                          (idx) {
+                            final f = existingTemplateFiles[idx];
+                            final name = (f.failoPav ?? f.id).trim();
+                            final busy = deletingExistingIds.contains(f.id);
+
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                bottom:
+                                    idx == existingTemplateFiles.length - 1
+                                        ? 0
+                                        : 4,
+                              ),
+                              child: Material(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(12),
+                                child: ListTile(
+                                  dense: true,
+                                  title: Text(
+                                    name,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: IconButton(
+                                    tooltip: 'Ištrinti',
+                                    onPressed: busy
+                                        ? null
+                                        : () async {
+                                            final ok =
+                                                await showDialog<bool?>(
+                                              context: context,
+                                              builder: (c) => AlertDialog(
+                                                title: const Text(
+                                                  'Pašalinti failą?',
+                                                ),
+                                                content: Text(
+                                                  'Ar tikrai ištrinti "$name"?',
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(c)
+                                                            .pop(false),
+                                                    child: const Text('Ne'),
+                                                  ),
+                                                  FilledButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(c)
+                                                            .pop(true),
+                                                    child: const Text('Taip'),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            if (ok != true) return;
+                                            if (!mounted) return;
+
+                                            setStateDialog(
+                                              () => deletingExistingIds
+                                                  .add(f.id),
+                                            );
+                                            try {
+                                              await Api.deletePrisegtasFailas(
+                                                f.id,
+                                              );
+                                              if (!mounted) return;
+                                              setStateDialog(() {
+                                                existingTemplateFiles = [
+                                                  ...existingTemplateFiles
+                                                      .where(
+                                                    (x) => x.id != f.id,
+                                                  ),
+                                                ];
+                                              });
+                                            } catch (e) {
+                                              if (!mounted) return;
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'Klaida trynimo metu: $e',
+                                                  ),
+                                                ),
+                                              );
+                                            } finally {
+                                              setStateDialog(
+                                                () => deletingExistingIds
+                                                    .remove(f.id),
+                                              );
+                                            }
+                                          },
+                                    icon:
+                                        const Icon(Icons.delete_outline),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+              if (pickedImages.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Pasirinkti failai:',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 160,
+                  child: SingleChildScrollView(
+                    primary: false,
+                    child: Column(
+                      children: List.generate(
+                        pickedImages.length,
+                        (idx) {
+                          final f = pickedImages[idx];
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: idx == pickedImages.length - 1 ? 0 : 4,
+                            ),
+                            child: Material(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                              child: ListTile(
+                                dense: true,
+                                title: Text(
+                                  f.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: IconButton(
+                                  tooltip: 'Pašalinti iš pasirinkimo',
+                                  onPressed: () {
+                                    setStateDialog(() {
+                                      pickedImages = [
+                                        ...pickedImages.take(idx),
+                                        ...pickedImages.skip(idx + 1),
+                                      ];
+                                    });
+                                  },
+                                  icon: const Icon(Icons.close),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -176,12 +395,12 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
           'nuotraukaPrivaloma': flags.nuotraukaPrivaloma,
         });
 
-        if (pickedImage != null) {
+        for (final img in pickedImages) {
           await Api.uploadPrisegtasFailasToZingsnisTemplate(
             templateId: created['id'] as int,
-            fileName: pickedImage!.name,
-            bytes: pickedImage!.bytes,
-            filePath: pickedImage!.path,
+            fileName: img.name,
+            bytes: img.bytes,
+            filePath: img.path,
           );
         }
 
@@ -203,12 +422,12 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
         };
         await Api.updateZingsnisTemplate(existing.id, payload);
 
-        if (pickedImage != null) {
+        for (final img in pickedImages) {
           await Api.uploadPrisegtasFailasToZingsnisTemplate(
             templateId: existing.id,
-            fileName: pickedImage!.name,
-            bytes: pickedImage!.bytes,
-            filePath: pickedImage!.path,
+            fileName: img.name,
+            bytes: img.bytes,
+            filePath: img.path,
           );
         }
 

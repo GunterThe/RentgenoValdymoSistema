@@ -501,31 +501,37 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
 
   Future<void> _attachFile(int zingsnisId) async {
     try {
-      final res = await FilePicker.platform.pickFiles(withData: true);
-      if (res == null || res.files.isEmpty) return;
-      final f = res.files.first;
-
-      final fileName = f.name;
-      final bytes = f.bytes;
-      final path = f.path;
-
-      final created = await Api.uploadPrisegtasFailasToZingsnis(
-        zingsnisId: zingsnisId,
-        fileName: fileName,
-        bytes: bytes,
-        filePath: bytes == null ? path : null,
+      final res = await FilePicker.platform.pickFiles(
+        withData: true,
+        allowMultiple: true,
       );
+      if (res == null || res.files.isEmpty) return;
 
-      final pf = PrisegtasFailas.fromJson(created);
+      final createdItems = <PrisegtasFailas>[];
+      for (final f in res.files) {
+        final fileName = f.name;
+        final bytes = f.bytes;
+        final path = f.path;
+
+        final created = await Api.uploadPrisegtasFailasToZingsnis(
+          zingsnisId: zingsnisId,
+          fileName: fileName,
+          bytes: bytes,
+          filePath: bytes == null ? path : null,
+        );
+        createdItems.add(PrisegtasFailas.fromJson(created));
+      }
+
       if (!mounted) return;
       setState(() {
-        final list = _failaiByZingsnisId[zingsnisId] ?? <PrisegtasFailas>[];
-        _failaiByZingsnisId[zingsnisId] = [pf, ...list];
+        final existing = _failaiByZingsnisId[zingsnisId] ?? <PrisegtasFailas>[];
+        _failaiByZingsnisId[zingsnisId] = [...createdItems.reversed, ...existing];
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Failas pridėtas')));
+      final msg = createdItems.length == 1
+          ? 'Failas pridėtas'
+          : 'Failai pridėti: ${createdItems.length}';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -894,28 +900,43 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                   final list =
                                                       _failaiByTemplateId[tpl.id] ??
                                                           const <PrisegtasFailas>[];
-                                                  final img = list.firstWhere(
-                                                    (f) => _isImageFileName(f.failoPav),
-                                                    orElse: () => PrisegtasFailas(
-                                                      id: '',
-                                                      zingsnisId: null,
-                                                      zingsnisTemplateId: null,
-                                                      failoPav: null,
-                                                      dydis: null,
-                                                      sukurimoLaikas: null,
-                                                    ),
-                                                  );
-                                                  if (img.id.isEmpty) return const SizedBox.shrink();
+                                                  final imgs = list
+                                                      .where(
+                                                        (f) => _isImageFileName(
+                                                          f.failoPav,
+                                                        ),
+                                                      )
+                                                      .toList();
+                                                  if (imgs.isEmpty) {
+                                                    return const SizedBox.shrink();
+                                                  }
 
                                                   return Padding(
-                                                    padding: const EdgeInsets.only(
+                                                    padding:
+                                                        const EdgeInsets.only(
                                                       bottom: 10,
                                                       top: 6,
                                                     ),
-                                                    child: _imagePreview(
-                                                      Api.prisegtasFailasFileUri(
-                                                        img.id,
-                                                      ).toString(),
+                                                    child: Column(
+                                                      children: imgs
+                                                          .map(
+                                                            (img) => Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .only(
+                                                                bottom: 8,
+                                                              ),
+                                                              child:
+                                                                  _imagePreview(
+                                                                Api
+                                                                    .prisegtasFailasFileUri(
+                                                                      img.id,
+                                                                    )
+                                                                    .toString(),
+                                                              ),
+                                                            ),
+                                                          )
+                                                          .toList(),
                                                     ),
                                                   );
                                                 },

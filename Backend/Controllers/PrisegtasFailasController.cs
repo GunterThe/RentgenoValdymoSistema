@@ -167,20 +167,6 @@ namespace Backend.Controllers
             var templateExists = await _db.ZingsnisTemplate.AsNoTracking().AnyAsync(t => t.Id == templateId);
             if (!templateExists) return NotFound("Template not found.");
 
-            // Keep a single image per template: delete existing rows + files first.
-            var existing = await _db.PrisegtiFailai
-                .Where(p => p.ZingsnisTemplateId == templateId)
-                .ToListAsync();
-            foreach (var e in existing)
-            {
-                TryDeletePhysicalFile(e.Nuoroda);
-            }
-            if (existing.Count > 0)
-            {
-                _db.PrisegtiFailai.RemoveRange(existing);
-                await _db.SaveChangesAsync();
-            }
-
             var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "templates");
             if (!Directory.Exists(uploadsDir)) Directory.CreateDirectory(uploadsDir);
 
