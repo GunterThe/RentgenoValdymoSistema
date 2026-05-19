@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict ZUI0Xzype4D2urp3IoafwdiATZNIrilnmXQfRPtlwT36ASxIhgoY30fXxgaimx1
+\restrict rhOHMSQaI8XXPqYfbJmhe09TFU1OuIws8QQJtRisZxK6BMH2BE70aM3MO68vAwu
 
--- Dumped from database version 18.3
--- Dumped by pg_dump version 18.3
+-- Dumped from database version 18.4
+-- Dumped by pg_dump version 18.4
 
--- Started on 2026-04-09 15:52:04 EEST
+-- Started on 2026-05-19 18:05:11 EEST
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -30,7 +30,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
 
 --
--- TOC entry 3644 (class 0 OID 0)
+-- TOC entry 3655 (class 0 OID 0)
 -- Dependencies: 2
 -- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: 
 --
@@ -39,7 +39,7 @@ COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
 
 
 --
--- TOC entry 928 (class 1247 OID 16694)
+-- TOC entry 929 (class 1247 OID 16694)
 -- Name: testotipas; Type: TYPE; Schema: public; Owner: postgres
 --
 
@@ -119,7 +119,7 @@ CREATE SEQUENCE public.lokacija_id_seq
 ALTER SEQUENCE public.lokacija_id_seq OWNER TO postgres;
 
 --
--- TOC entry 3645 (class 0 OID 0)
+-- TOC entry 3656 (class 0 OID 0)
 -- Dependencies: 233
 -- Name: lokacija_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -225,7 +225,7 @@ CREATE SEQUENCE public.sablonas_id_seq
 ALTER SEQUENCE public.sablonas_id_seq OWNER TO postgres;
 
 --
--- TOC entry 3646 (class 0 OID 0)
+-- TOC entry 3657 (class 0 OID 0)
 -- Dependencies: 235
 -- Name: sablonas_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -288,15 +288,6 @@ CREATE TABLE public.testasirasas (
     eile integer
 );
 
--- Per-įrašas vartai (žingsniai, kurie turi būti atlikti prieš kitus)
-CREATE TABLE public.testasirasas_privalomas_zingsnis_template (
-    testasirasas_id integer NOT NULL,
-    zingsnis_template_id integer NOT NULL
-);
-
-
-ALTER TABLE public.testasirasas_privalomas_zingsnis_template OWNER TO postgres;
-
 
 ALTER TABLE public.testasirasas OWNER TO postgres;
 
@@ -314,6 +305,19 @@ ALTER TABLE public.testasirasas ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY
     CACHE 1
 );
 
+
+--
+-- TOC entry 241 (class 1259 OID 16860)
+-- Name: testasirasas_privalomas_zingsnis_template; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.testasirasas_privalomas_zingsnis_template (
+    testasirasas_id integer CONSTRAINT testasirasas_privalomas_zingsnis_templ_testasirasas_id_not_null NOT NULL,
+    zingsnis_template_id integer CONSTRAINT testasirasas_privalomas_zingsnis__zingsnis_template_id_not_null NOT NULL
+);
+
+
+ALTER TABLE public.testasirasas_privalomas_zingsnis_template OWNER TO postgres;
 
 --
 -- TOC entry 228 (class 1259 OID 16712)
@@ -410,7 +414,7 @@ CREATE SEQUENCE public.zinute_id_seq
 ALTER SEQUENCE public.zinute_id_seq OWNER TO postgres;
 
 --
--- TOC entry 3647 (class 0 OID 0)
+-- TOC entry 3658 (class 0 OID 0)
 -- Dependencies: 238
 -- Name: zinute_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -419,7 +423,7 @@ ALTER SEQUENCE public.zinute_id_seq OWNED BY public.zinute.id;
 
 
 --
--- TOC entry 3426 (class 2604 OID 16777)
+-- TOC entry 3431 (class 2604 OID 16777)
 -- Name: lokacija id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -427,7 +431,7 @@ ALTER TABLE ONLY public.lokacija ALTER COLUMN id SET DEFAULT nextval('public.lok
 
 
 --
--- TOC entry 3427 (class 2604 OID 16793)
+-- TOC entry 3432 (class 2604 OID 16793)
 -- Name: sablonas id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -435,7 +439,7 @@ ALTER TABLE ONLY public.sablonas ALTER COLUMN id SET DEFAULT nextval('public.sab
 
 
 --
--- TOC entry 3428 (class 2604 OID 16832)
+-- TOC entry 3434 (class 2604 OID 16832)
 -- Name: zinute id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -443,7 +447,7 @@ ALTER TABLE ONLY public.zinute ALTER COLUMN id SET DEFAULT nextval('public.zinut
 
 
 --
--- TOC entry 3618 (class 0 OID 16608)
+-- TOC entry 3628 (class 0 OID 16608)
 -- Dependencies: 220
 -- Data for Name: irasas; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -453,7 +457,7 @@ COPY public.irasas (id, id_dokumento, pavadinimas, pradzia, pabaiga, statusas, l
 
 
 --
--- TOC entry 3632 (class 0 OID 16774)
+-- TOC entry 3642 (class 0 OID 16774)
 -- Dependencies: 234
 -- Data for Name: lokacija; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -463,18 +467,18 @@ COPY public.lokacija (id, pavadinimas) FROM stdin;
 
 
 --
--- TOC entry 3620 (class 0 OID 16619)
+-- TOC entry 3630 (class 0 OID 16619)
 -- Dependencies: 222
 -- Data for Name: naudotojas; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.naudotojas (id, vardas, pavarde, gimimo_data, adminas, password_hash, prisijungimoid, super_adminas) FROM stdin;
-3fa85f64-5717-4562-b3fc-2c963f66afa6	Super	Admin	2026-02-21	t	$2a$11$XOluA5qHy5wV7Y.twmVgLOjO3EvrsWAfk2ypmioAk1D0T.SWoEJjS	SuperAdmin	t
+COPY public.naudotojas (id, vardas, pavarde, gimimo_data, adminas, password_hash, prisijungimoid, super_adminas, must_change_password) FROM stdin;
+3fa85f64-5717-4562-b3fc-2c963f66afa6	Super	Admin	2026-02-21	t	$2a$11$XOluA5qHy5wV7Y.twmVgLOjO3EvrsWAfk2ypmioAk1D0T.SWoEJjS	SuperAdmin	t	f
 \.
 
 
 --
--- TOC entry 3638 (class 0 OID 16839)
+-- TOC entry 3648 (class 0 OID 16839)
 -- Dependencies: 240
 -- Data for Name: naudotojas_zinute; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -484,7 +488,7 @@ COPY public.naudotojas_zinute (zinute_id, naudotojas_id, perskaityta) FROM stdin
 
 
 --
--- TOC entry 3621 (class 0 OID 16632)
+-- TOC entry 3631 (class 0 OID 16632)
 -- Dependencies: 223
 -- Data for Name: prisegtasfailas; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -494,7 +498,7 @@ COPY public.prisegtasfailas (id, failopav, dydis, nuoroda, sukurimolaikas, zings
 
 
 --
--- TOC entry 3622 (class 0 OID 16639)
+-- TOC entry 3632 (class 0 OID 16639)
 -- Dependencies: 224
 -- Data for Name: refreshtoken; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -504,7 +508,7 @@ COPY public.refreshtoken (id, token, expires, revoked, naudotojasid) FROM stdin;
 
 
 --
--- TOC entry 3634 (class 0 OID 16790)
+-- TOC entry 3644 (class 0 OID 16790)
 -- Dependencies: 236
 -- Data for Name: sablonas; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -514,17 +518,17 @@ COPY public.sablonas (id, pavadinimas) FROM stdin;
 
 
 --
--- TOC entry 3635 (class 0 OID 16801)
+-- TOC entry 3645 (class 0 OID 16801)
 -- Dependencies: 237
 -- Data for Name: sablonas_testas; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.sablonas_testas (testasid, sablonasid) FROM stdin;
+COPY public.sablonas_testas (testasid, sablonasid, eile) FROM stdin;
 \.
 
 
 --
--- TOC entry 3623 (class 0 OID 16648)
+-- TOC entry 3633 (class 0 OID 16648)
 -- Dependencies: 225
 -- Data for Name: testas; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -534,7 +538,7 @@ COPY public.testas (id, testotekstas, tipas) FROM stdin;
 
 
 --
--- TOC entry 3625 (class 0 OID 16656)
+-- TOC entry 3635 (class 0 OID 16656)
 -- Dependencies: 227
 -- Data for Name: testasirasas; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -544,7 +548,17 @@ COPY public.testasirasas (testasid, irasasid, id, eile) FROM stdin;
 
 
 --
--- TOC entry 3626 (class 0 OID 16712)
+-- TOC entry 3649 (class 0 OID 16860)
+-- Dependencies: 241
+-- Data for Name: testasirasas_privalomas_zingsnis_template; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.testasirasas_privalomas_zingsnis_template (testasirasas_id, zingsnis_template_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 3636 (class 0 OID 16712)
 -- Dependencies: 228
 -- Data for Name: zingsnis; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -554,7 +568,7 @@ COPY public.zingsnis (id, komentaras, irasas_testas_id, zingsnis_template_id, co
 
 
 --
--- TOC entry 3627 (class 0 OID 16733)
+-- TOC entry 3637 (class 0 OID 16733)
 -- Dependencies: 229
 -- Data for Name: zingsnis_template; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -564,7 +578,7 @@ COPY public.zingsnis_template (id, testas_id, pavadinimas, aprasymas, eile, nuot
 
 
 --
--- TOC entry 3637 (class 0 OID 16829)
+-- TOC entry 3647 (class 0 OID 16829)
 -- Dependencies: 239
 -- Data for Name: zinute; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -574,79 +588,79 @@ COPY public.zinute (id, tekstas) FROM stdin;
 
 
 --
--- TOC entry 3648 (class 0 OID 0)
+-- TOC entry 3659 (class 0 OID 0)
 -- Dependencies: 221
 -- Name: irasas_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.irasas_id_seq', 10, true);
+SELECT pg_catalog.setval('public.irasas_id_seq', 14, true);
 
 
 --
--- TOC entry 3649 (class 0 OID 0)
+-- TOC entry 3660 (class 0 OID 0)
 -- Dependencies: 233
 -- Name: lokacija_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.lokacija_id_seq', 1, true);
+SELECT pg_catalog.setval('public.lokacija_id_seq', 3, true);
 
 
 --
--- TOC entry 3650 (class 0 OID 0)
+-- TOC entry 3661 (class 0 OID 0)
 -- Dependencies: 235
 -- Name: sablonas_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.sablonas_id_seq', 1, true);
+SELECT pg_catalog.setval('public.sablonas_id_seq', 2, true);
 
 
 --
--- TOC entry 3651 (class 0 OID 0)
+-- TOC entry 3662 (class 0 OID 0)
 -- Dependencies: 226
 -- Name: testas_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.testas_id_seq', 10, true);
+SELECT pg_catalog.setval('public.testas_id_seq', 12, true);
 
 
 --
--- TOC entry 3652 (class 0 OID 0)
+-- TOC entry 3663 (class 0 OID 0)
 -- Dependencies: 230
 -- Name: testasirasas_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.testasirasas_id_seq', 13, true);
+SELECT pg_catalog.setval('public.testasirasas_id_seq', 18, true);
 
 
 --
--- TOC entry 3653 (class 0 OID 0)
+-- TOC entry 3664 (class 0 OID 0)
 -- Dependencies: 232
 -- Name: zingsnis_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.zingsnis_id_seq', 17, true);
+SELECT pg_catalog.setval('public.zingsnis_id_seq', 19, true);
 
 
 --
--- TOC entry 3654 (class 0 OID 0)
+-- TOC entry 3665 (class 0 OID 0)
 -- Dependencies: 231
 -- Name: zingsnis_template_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.zingsnis_template_id_seq', 24, true);
+SELECT pg_catalog.setval('public.zingsnis_template_id_seq', 28, true);
 
 
 --
--- TOC entry 3655 (class 0 OID 0)
+-- TOC entry 3666 (class 0 OID 0)
 -- Dependencies: 238
 -- Name: zinute_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.zinute_id_seq', 1, true);
+SELECT pg_catalog.setval('public.zinute_id_seq', 4, true);
 
 
 --
--- TOC entry 3430 (class 2606 OID 16662)
+-- TOC entry 3436 (class 2606 OID 16662)
 -- Name: irasas irasas_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -655,7 +669,7 @@ ALTER TABLE ONLY public.irasas
 
 
 --
--- TOC entry 3448 (class 2606 OID 16783)
+-- TOC entry 3454 (class 2606 OID 16783)
 -- Name: lokacija lokacija_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -664,7 +678,7 @@ ALTER TABLE ONLY public.lokacija
 
 
 --
--- TOC entry 3432 (class 2606 OID 16664)
+-- TOC entry 3438 (class 2606 OID 16664)
 -- Name: naudotojas naudotojas_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -673,7 +687,7 @@ ALTER TABLE ONLY public.naudotojas
 
 
 --
--- TOC entry 3456 (class 2606 OID 16845)
+-- TOC entry 3462 (class 2606 OID 16845)
 -- Name: naudotojas_zinute naudotojas_zinute_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -682,7 +696,16 @@ ALTER TABLE ONLY public.naudotojas_zinute
 
 
 --
--- TOC entry 3434 (class 2606 OID 16666)
+-- TOC entry 3464 (class 2606 OID 16866)
+-- Name: testasirasas_privalomas_zingsnis_template pk_testasirasas_privalomas_zingsnis_template; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.testasirasas_privalomas_zingsnis_template
+    ADD CONSTRAINT pk_testasirasas_privalomas_zingsnis_template PRIMARY KEY (testasirasas_id, zingsnis_template_id);
+
+
+--
+-- TOC entry 3440 (class 2606 OID 16666)
 -- Name: prisegtasfailas prisegtasfailas_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -691,7 +714,7 @@ ALTER TABLE ONLY public.prisegtasfailas
 
 
 --
--- TOC entry 3436 (class 2606 OID 16668)
+-- TOC entry 3442 (class 2606 OID 16668)
 -- Name: refreshtoken refreshtoken_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -700,7 +723,7 @@ ALTER TABLE ONLY public.refreshtoken
 
 
 --
--- TOC entry 3450 (class 2606 OID 16799)
+-- TOC entry 3456 (class 2606 OID 16799)
 -- Name: sablonas sablonas_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -709,7 +732,7 @@ ALTER TABLE ONLY public.sablonas
 
 
 --
--- TOC entry 3452 (class 2606 OID 16807)
+-- TOC entry 3458 (class 2606 OID 16807)
 -- Name: sablonas_testas sablonas_testas_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -718,7 +741,7 @@ ALTER TABLE ONLY public.sablonas_testas
 
 
 --
--- TOC entry 3438 (class 2606 OID 16670)
+-- TOC entry 3444 (class 2606 OID 16670)
 -- Name: testas testas_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -727,7 +750,7 @@ ALTER TABLE ONLY public.testas
 
 
 --
--- TOC entry 3440 (class 2606 OID 16758)
+-- TOC entry 3446 (class 2606 OID 16758)
 -- Name: testasirasas testasirasas_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -736,19 +759,16 @@ ALTER TABLE ONLY public.testasirasas
 
 
 --
--- TOC entry 3442 (class 2606 OID 16760)
+-- TOC entry 3448 (class 2606 OID 16760)
 -- Name: testasirasas testasirasas_testasid_irasasid_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.testasirasas
     ADD CONSTRAINT testasirasas_testasid_irasasid_unique UNIQUE (testasid, irasasid);
 
-ALTER TABLE ONLY public.testasirasas_privalomas_zingsnis_template
-    ADD CONSTRAINT pk_testasirasas_privalomas_zingsnis_template PRIMARY KEY (testasirasas_id, zingsnis_template_id);
-
 
 --
--- TOC entry 3444 (class 2606 OID 16722)
+-- TOC entry 3450 (class 2606 OID 16722)
 -- Name: zingsnis zingsnis_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -757,7 +777,7 @@ ALTER TABLE ONLY public.zingsnis
 
 
 --
--- TOC entry 3446 (class 2606 OID 16740)
+-- TOC entry 3452 (class 2606 OID 16740)
 -- Name: zingsnis_template zingsnis_template_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -766,7 +786,7 @@ ALTER TABLE ONLY public.zingsnis_template
 
 
 --
--- TOC entry 3454 (class 2606 OID 16838)
+-- TOC entry 3460 (class 2606 OID 16838)
 -- Name: zinute zinute_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -775,7 +795,7 @@ ALTER TABLE ONLY public.zinute
 
 
 --
--- TOC entry 3463 (class 2606 OID 16761)
+-- TOC entry 3471 (class 2606 OID 16761)
 -- Name: zingsnis fk_irasastekstas_zingsnis; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -784,7 +804,7 @@ ALTER TABLE ONLY public.zingsnis
 
 
 --
--- TOC entry 3457 (class 2606 OID 16784)
+-- TOC entry 3465 (class 2606 OID 16784)
 -- Name: irasas fk_lokacija; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -793,7 +813,7 @@ ALTER TABLE ONLY public.irasas
 
 
 --
--- TOC entry 3464 (class 2606 OID 16766)
+-- TOC entry 3472 (class 2606 OID 16766)
 -- Name: zingsnis fk_naudotojas_zingsnis; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -802,7 +822,7 @@ ALTER TABLE ONLY public.zingsnis
 
 
 --
--- TOC entry 3458 (class 2606 OID 16728)
+-- TOC entry 3466 (class 2606 OID 16728)
 -- Name: prisegtasfailas fk_prisegtas_zingsnis; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -811,7 +831,7 @@ ALTER TABLE ONLY public.prisegtasfailas
 
 
 --
--- TOC entry 3466 (class 2606 OID 16741)
+-- TOC entry 3474 (class 2606 OID 16741)
 -- Name: zingsnis_template fk_template_testas; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -820,22 +840,34 @@ ALTER TABLE ONLY public.zingsnis_template
 
 
 --
--- TOC entry 3465 (class 2606 OID 16746)
+-- TOC entry 3473 (class 2606 OID 16746)
 -- Name: zingsnis fk_template_zingsnis; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.zingsnis
     ADD CONSTRAINT fk_template_zingsnis FOREIGN KEY (zingsnis_template_id) REFERENCES public.zingsnis_template(id) ON DELETE CASCADE;
 
+
+--
+-- TOC entry 3479 (class 2606 OID 16872)
+-- Name: testasirasas_privalomas_zingsnis_template fk_tipzt_testasirasas; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
 ALTER TABLE ONLY public.testasirasas_privalomas_zingsnis_template
     ADD CONSTRAINT fk_tipzt_testasirasas FOREIGN KEY (testasirasas_id) REFERENCES public.testasirasas(id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 3480 (class 2606 OID 16867)
+-- Name: testasirasas_privalomas_zingsnis_template fk_tipzt_zingsnis_template; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
 
 ALTER TABLE ONLY public.testasirasas_privalomas_zingsnis_template
     ADD CONSTRAINT fk_tipzt_zingsnis_template FOREIGN KEY (zingsnis_template_id) REFERENCES public.zingsnis_template(id) ON DELETE CASCADE;
 
 
 --
--- TOC entry 3469 (class 2606 OID 16851)
+-- TOC entry 3477 (class 2606 OID 16851)
 -- Name: naudotojas_zinute naudotojas_zinute_naudotojas_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -844,7 +876,7 @@ ALTER TABLE ONLY public.naudotojas_zinute
 
 
 --
--- TOC entry 3470 (class 2606 OID 16846)
+-- TOC entry 3478 (class 2606 OID 16846)
 -- Name: naudotojas_zinute naudotojas_zinute_zinute_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -853,7 +885,7 @@ ALTER TABLE ONLY public.naudotojas_zinute
 
 
 --
--- TOC entry 3459 (class 2606 OID 16823)
+-- TOC entry 3467 (class 2606 OID 16823)
 -- Name: prisegtasfailas prisegtasfailas_zingsnis_template_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -862,7 +894,7 @@ ALTER TABLE ONLY public.prisegtasfailas
 
 
 --
--- TOC entry 3460 (class 2606 OID 16678)
+-- TOC entry 3468 (class 2606 OID 16678)
 -- Name: refreshtoken refreshtoken_naudotojasid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -871,7 +903,7 @@ ALTER TABLE ONLY public.refreshtoken
 
 
 --
--- TOC entry 3467 (class 2606 OID 16818)
+-- TOC entry 3475 (class 2606 OID 16818)
 -- Name: sablonas_testas sablonas_testas_sablonasid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -880,7 +912,7 @@ ALTER TABLE ONLY public.sablonas_testas
 
 
 --
--- TOC entry 3468 (class 2606 OID 16808)
+-- TOC entry 3476 (class 2606 OID 16808)
 -- Name: sablonas_testas sablonas_testas_testasid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -889,7 +921,7 @@ ALTER TABLE ONLY public.sablonas_testas
 
 
 --
--- TOC entry 3461 (class 2606 OID 16683)
+-- TOC entry 3469 (class 2606 OID 16683)
 -- Name: testasirasas testasirasas_irasasid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -898,7 +930,7 @@ ALTER TABLE ONLY public.testasirasas
 
 
 --
--- TOC entry 3462 (class 2606 OID 16688)
+-- TOC entry 3470 (class 2606 OID 16688)
 -- Name: testasirasas testasirasas_testasid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -906,11 +938,11 @@ ALTER TABLE ONLY public.testasirasas
     ADD CONSTRAINT testasirasas_testasid_fkey FOREIGN KEY (testasid) REFERENCES public.testas(id) ON DELETE CASCADE;
 
 
--- Completed on 2026-04-09 15:52:04 EEST
+-- Completed on 2026-05-19 18:05:11 EEST
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ZUI0Xzype4D2urp3IoafwdiATZNIrilnmXQfRPtlwT36ASxIhgoY30fXxgaimx1
+\unrestrict rhOHMSQaI8XXPqYfbJmhe09TFU1OuIws8QQJtRisZxK6BMH2BE70aM3MO68vAwu
 
