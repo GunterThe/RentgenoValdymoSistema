@@ -16,6 +16,7 @@
 
 3. Paleidimas
 	- kai jau padarete `docker compose up --build` jeigu isjungete serveri arba perkrovet ta kompa tai reikia tiktai padaryti `docker compose up`, kad nebuildint be reikalo.
+	- flutter run -d chrome --web-hostname=localhost --web-port=8080
 
 ---
 
