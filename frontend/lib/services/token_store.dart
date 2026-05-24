@@ -91,7 +91,9 @@ class TokenStore {
       await _storage.write(key: _kRefresh, value: refreshToken);
     } on PlatformException {
       // Ignore: plugin not available (e.g., tests).
-    } on MissingPluginException {}
+    } on MissingPluginException {
+      // Ignore: plugin not available (e.g., tests).
+    }
   }
 
   Future<void> _deleteRaw() async {
@@ -109,6 +111,8 @@ class TokenStore {
       await _storage.delete(key: _kRefresh);
     } on PlatformException {
       // Ignore: plugin not available (e.g., tests).
-    } on MissingPluginException {}
+    } on MissingPluginException {
+      // Ignore: plugin not available (e.g., tests).
+    }
   }
 }

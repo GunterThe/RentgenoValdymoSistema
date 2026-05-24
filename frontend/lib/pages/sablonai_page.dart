@@ -490,7 +490,7 @@ class _SablonaiPageState extends State<SablonaiPage> {
                                   if (isNarrow) {
                                     return ListView.separated(
                                       itemCount: _items.length,
-                                      separatorBuilder: (_, __) =>
+                                      separatorBuilder: (_, _) =>
                                           const SizedBox(height: 8),
                                       itemBuilder: (ctx, index) {
                                         final it = _items[index];

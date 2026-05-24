@@ -241,7 +241,7 @@ class _LokacijosPageState extends State<LokacijosPage> {
                                         if (isNarrow) {
                                           return ListView.separated(
                                             itemCount: filteredItems.length,
-                                            separatorBuilder: (_, __) =>
+                                            separatorBuilder: (_, _) =>
                                                 const SizedBox(height: 8),
                                             itemBuilder: (ctx, index) {
                                               final it = filteredItems[index];

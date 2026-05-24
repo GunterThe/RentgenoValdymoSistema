@@ -24,6 +24,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
   int? _sortColumnIndex;
   bool _sortAscending = true;
   final Set<String> _statusFilters = <String>{};
+  int? _lokacijaFilterId;
   final Map<int, String> _lokacijaNameById = {};
   Map<int, String> _komentaraiByIrasasId = {};
   bool _komentaraiLoaded = false;
@@ -146,6 +147,11 @@ class _IrasaiPageState extends State<IrasaiPage> {
           ..clear()
           ..addAll(locMap);
 
+        if (_lokacijaFilterId != null &&
+            !_lokacijaNameById.containsKey(_lokacijaFilterId)) {
+          _lokacijaFilterId = null;
+        }
+
         _komentaraiByIrasasId = {};
         _komentaraiLoaded = false;
         _komentaraiLoading = false;
@@ -201,12 +207,17 @@ class _IrasaiPageState extends State<IrasaiPage> {
             return filters.contains(cat);
           }).toList();
 
+    final lokId = _lokacijaFilterId;
+    final filteredByLokacija = lokId == null
+      ? filtered
+      : filtered.where((e) => e.lokacijaId == lokId).toList();
+
     final col = _sortColumnIndex;
-    if (col == null) return filtered;
+    if (col == null) return filteredByLokacija;
 
     int cmp(String a, String b) => a.toLowerCase().compareTo(b.toLowerCase());
 
-    filtered.sort((a, b) {
+    filteredByLokacija.sort((a, b) {
       int r;
       switch (col) {
         case 0:
@@ -232,7 +243,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
       }
       return _sortAscending ? r : -r;
     });
-    return filtered;
+    return filteredByLokacija;
   }
 
   Future<void> _editIrasas(Irasas it) async {
@@ -1022,6 +1033,35 @@ class _IrasaiPageState extends State<IrasaiPage> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<int?>(
+                      key: ValueKey(_lokacijaFilterId),
+                      initialValue: _lokacijaFilterId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Lokacija',
+                        prefixIcon: Icon(Icons.place_outlined),
+                      ),
+                      items: [
+                        const DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text('Visos'),
+                        ),
+                        ...(_lokacijaNameById.entries.toList()
+                              ..sort(
+                                (a, b) => a.value
+                                    .toLowerCase()
+                                    .compareTo(b.value.toLowerCase()),
+                              ))
+                            .map(
+                              (e) => DropdownMenuItem<int?>(
+                                value: e.key,
+                                child: Text(e.value),
+                              ),
+                            ),
+                      ],
+                      onChanged: (v) => setState(() => _lokacijaFilterId = v),
                     ),
                     const SizedBox(height: 12),
                     Expanded(
