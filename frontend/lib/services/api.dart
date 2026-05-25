@@ -35,11 +35,27 @@ class Api {
   }
 
   static Uri prisegtasFailasFileUri(String id) {
-    return Uri.parse('$baseUrl/api/prisegtasfailas/file/$id');
+    final uri = Uri.parse('$baseUrl/api/prisegtasfailas/file/$id');
+    final token = AuthService.instance.accessToken;
+    if (token == null || token.isEmpty) return uri;
+    return uri.replace(
+      queryParameters: {
+        ...uri.queryParameters,
+        'access_token': token,
+      },
+    );
   }
 
   static Uri prisegtasFailasDownloadUri(String id) {
-    return Uri.parse('$baseUrl/api/prisegtasfailas/download/$id');
+    final uri = Uri.parse('$baseUrl/api/prisegtasfailas/download/$id');
+    final token = AuthService.instance.accessToken;
+    if (token == null || token.isEmpty) return uri;
+    return uri.replace(
+      queryParameters: {
+        ...uri.queryParameters,
+        'access_token': token,
+      },
+    );
   }
 
   // Žinutės

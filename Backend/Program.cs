@@ -119,6 +119,27 @@ builder.Services.AddAuthentication(options =>
 {
     options.RequireHttpsMetadata = false;
     options.SaveToken = true;
+    options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // Flutter Web (and browsers in general) can't attach Authorization headers
+            // to <img> requests. Allow passing the JWT as a query parameter for
+            // attachment file/download endpoints only.
+            var accessToken = context.Request.Query["access_token"].ToString();
+            if (!string.IsNullOrWhiteSpace(accessToken))
+            {
+                var path = context.HttpContext.Request.Path;
+                if (path.StartsWithSegments("/api/prisegtasfailas/file") ||
+                    path.StartsWithSegments("/api/prisegtasfailas/download"))
+                {
+                    context.Token = accessToken;
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+    };
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,

@@ -87,6 +87,7 @@ namespace Backend.Controllers
         }
 
         [HttpGet("file/{id}")]
+        [Authorize]
         public async Task<IActionResult> GetFile(Guid id)
         {
             var item = await _db.PrisegtiFailai.FindAsync(id);
@@ -100,6 +101,7 @@ namespace Backend.Controllers
         }
 
         [HttpGet("download/{id}")]
+        [Authorize]
         public async Task<IActionResult> Download(Guid id)
         {
             var item = await _db.PrisegtiFailai.FindAsync(id);
