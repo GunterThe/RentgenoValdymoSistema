@@ -120,6 +120,7 @@ class _SablonaiPageState extends State<SablonaiPage> {
 
     final testById = <int, Testas>{for (final t in testai) t.id: t};
 
+    if (!mounted) return;
     final ok = await showDialog<bool?>(
       context: context,
       builder: (ctx) => StatefulBuilder(

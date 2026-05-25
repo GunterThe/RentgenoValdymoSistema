@@ -478,6 +478,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
           entry.value.sort((a, b) => a.eile.compareTo(b.eile));
         }
 
+        if (!mounted) return;
         await showDialog<void>(
           context: context,
           builder: (dialogCtx) => StatefulBuilder(
@@ -564,6 +565,8 @@ class _IrasaiPageState extends State<IrasaiPage> {
       }
     }
 
+    if (!mounted) return;
+
     final ok = await showDialog<bool?>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -642,6 +645,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
                           lastDate: DateTime(2100),
                         );
                         if (picked == null) return;
+                        if (!ctx.mounted) return;
                         setLocal(() {
                           pradzia = DateTime(
                             picked.year,
@@ -664,6 +668,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
                           lastDate: DateTime(2100),
                         );
                         if (picked == null) return;
+                        if (!ctx.mounted) return;
                         setLocal(() {
                           pabaiga = DateTime(
                             picked.year,
@@ -716,6 +721,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
     if ((payload['pavadinimas'] as String).isEmpty ||
         (payload['idDokumento'] as String).isEmpty ||
         (payload['lokacijaId'] as int?) == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -766,6 +772,8 @@ class _IrasaiPageState extends State<IrasaiPage> {
         );
         return;
       }
+
+      if (!mounted) return;
 
       Testas selected = available.first;
 
@@ -848,6 +856,8 @@ class _IrasaiPageState extends State<IrasaiPage> {
         );
         return;
       }
+
+      if (!mounted) return;
 
       Testas selected = linkedTests.first;
 

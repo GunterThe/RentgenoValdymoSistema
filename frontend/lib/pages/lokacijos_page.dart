@@ -307,53 +307,82 @@ class _LokacijosPageState extends State<LokacijosPage> {
                                           );
                                         }
 
+                                        final availableW = constraints.maxWidth;
+                                        const actionsW = 120.0;
+                                        final nameW = (availableW - actionsW - 64)
+                                            .clamp(240.0, 720.0)
+                                            .toDouble();
+
                                         return SingleChildScrollView(
-                                          scrollDirection: Axis.horizontal,
-                                          child: SingleChildScrollView(
-                                            child: DataTable(
-                                              columns: const [
-                                                DataColumn(
-                                                  label: Text('Pavadinimas'),
-                                                ),
-                                                DataColumn(
-                                                  label: Text('Veiksmai'),
-                                                ),
-                                              ],
-                                              rows: filteredItems.map((it) {
-                                                return DataRow(
-                                                  cells: [
-                                                    DataCell(
-                                                      Text(it.pavadinimas),
-                                                    ),
-                                                    DataCell(
-                                                      Row(
-                                                        children: [
-                                                          IconButton(
-                                                            tooltip:
-                                                                'Redaguoti',
-                                                            onPressed: () =>
-                                                                _createOrEdit(
-                                                                  existing: it,
-                                                                ),
-                                                            icon: const Icon(
-                                                              Icons.edit,
-                                                            ),
-                                                          ),
-                                                          IconButton(
-                                                            tooltip: 'Ištrinti',
-                                                            onPressed: () =>
-                                                                _delete(it),
-                                                            icon: const Icon(
-                                                              Icons
-                                                                  .delete_outline,
-                                                            ),
-                                                          ),
-                                                        ],
+                                          child: Align(
+                                            alignment: Alignment.topCenter,
+                                            child: SizedBox(
+                                              width: availableW,
+                                              child: DataTable(
+                                                horizontalMargin: 16,
+                                                columnSpacing: 24,
+                                                columns: [
+                                                  DataColumn(
+                                                    label: SizedBox(
+                                                      width: nameW,
+                                                      child: const Text(
+                                                        'Pavadinimas',
                                                       ),
                                                     ),
-                                                  ],
-                                                );
-                                              }).toList(),
+                                                  ),
+                                                  const DataColumn(
+                                                    label: SizedBox(
+                                                      width: actionsW,
+                                                      child: Text('Veiksmai'),
+                                                    ),
+                                                  ),
+                                                ],
+                                                rows: filteredItems.map((it) {
+                                                  return DataRow(
+                                                    cells: [
+                                                      DataCell(
+                                                        SizedBox(
+                                                          width: nameW,
+                                                          child: Text(
+                                                            it.pavadinimas,
+                                                            overflow:
+                                                                TextOverflow.ellipsis,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      DataCell(
+                                                        SizedBox(
+                                                          width: actionsW,
+                                                          child: Row(
+                                                            children: [
+                                                              IconButton(
+                                                                tooltip:
+                                                                    'Redaguoti',
+                                                                onPressed: () =>
+                                                                    _createOrEdit(
+                                                                  existing: it,
+                                                                ),
+                                                                icon: const Icon(
+                                                                  Icons.edit,
+                                                                ),
+                                                              ),
+                                                              IconButton(
+                                                                tooltip: 'Ištrinti',
+                                                                onPressed: () =>
+                                                                    _delete(it),
+                                                                icon: const Icon(
+                                                                  Icons
+                                                                      .delete_outline,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                }).toList(),
+                                              ),
                                             ),
                                           ),
                                         );

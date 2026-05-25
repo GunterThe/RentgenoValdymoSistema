@@ -96,6 +96,7 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
       }
     }
 
+    if (!mounted) return;
     final ok = await showDialog<bool?>(
       context: context,
       builder: (ctx) => AlertDialog(

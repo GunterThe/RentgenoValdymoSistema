@@ -155,8 +155,9 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
       setState(() => _naudotojaiById[userId] = n);
     } catch (_) {
     } finally {
-      if (!mounted) return;
-      setState(() => _loadingNaudotojai.remove(userId));
+      if (mounted) {
+        setState(() => _loadingNaudotojai.remove(userId));
+      }
     }
   }
 
@@ -309,6 +310,8 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
           hasPicture = await _hasPictureForZingsnis(zId);
         }
       }
+
+      if (!mounted) return;
 
       if (reqComment && reqPhoto) {
         if (!hasComment && !hasPicture) {
@@ -531,6 +534,7 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
       final msg = createdItems.length == 1
           ? 'Failas pridėtas'
           : 'Failai pridėti: ${createdItems.length}';
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
       if (!mounted) return;
