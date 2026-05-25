@@ -42,3 +42,8 @@ Jeigu planuojate hostinti viešai internete, naudokite [docker-compose.prod.yml]
 
 3. Atidarykite naršyklėje:
 	- `https://<jusu-domenas>/`
+
+## SuperAdminas
+
+Prisijungimo id: SuperAdmin
+Slaptazodis: 123456
