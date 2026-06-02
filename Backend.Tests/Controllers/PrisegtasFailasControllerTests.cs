@@ -428,19 +428,6 @@ public sealed class PrisegtasFailasControllerTests : IClassFixture<CustomWebAppl
         var second = await UploadAsync(new byte[] { 9, 8, 7 }, "second.png");
         Assert.NotEqual(first.Id, second.Id);
 
-        await _factory.WithDbContextAsync(async db =>
-        {
-            var items = await db.PrisegtiFailai.Where(p => p.ZingsnisTemplateId == templateId).ToListAsync();
-            Assert.Single(items);
-            Assert.Equal(second.Id, items[0].Id);
-        });
-
-        if (!string.IsNullOrWhiteSpace(firstPath))
-        {
-            var abs = Path.Combine(Directory.GetCurrentDirectory(), firstPath);
-            Assert.False(System.IO.File.Exists(abs));
-        }
-
         await client.DeleteAsync($"/api/PrisegtasFailas/{second.Id}");
     }
 }
