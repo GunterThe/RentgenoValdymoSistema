@@ -5,6 +5,7 @@ import '../models/prisegtas_failas.dart';
 import '../models/zingsnis_template.dart';
 import '../services/api.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/page_panel.dart';
 
 enum _CompletionRequirement { none, comment, photo, both }
 
@@ -510,8 +511,7 @@ class _ZingsnisPageState extends State<ZingsnisPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+              child: PagePanel(
                 child: Column(
                   children: [
                     Expanded(

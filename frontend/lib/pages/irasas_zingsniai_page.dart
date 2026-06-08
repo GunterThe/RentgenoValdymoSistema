@@ -13,6 +13,7 @@ import '../services/api.dart';
 import '../services/auth_service.dart';
 import '../services/jwt_utils.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/page_panel.dart';
 
 class IrasasZingsniaiPage extends StatefulWidget {
   final Irasas irasas;
@@ -700,8 +701,7 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+              child: PagePanel(
                 child: _links.isEmpty
                     ? Center(
                         child: Text(

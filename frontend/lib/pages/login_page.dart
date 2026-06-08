@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../widgets/page_panel.dart';
 
 class LoginPage extends StatefulWidget {
   final String? nextRoute;
@@ -68,8 +69,7 @@ class _LoginPageState extends State<LoginPage> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            child: PagePanel(
               child: Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),

@@ -3,6 +3,7 @@ import '../services/api.dart';
 import '../models/testas.dart';
 import 'zingsnis_page.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/page_panel.dart';
 
 class TestaiPage extends StatefulWidget {
   const TestaiPage({super.key});
@@ -173,8 +174,7 @@ class _TestaiPageState extends State<TestaiPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+              child: PagePanel(
                 child: Column(
                   children: [
                     TextField(

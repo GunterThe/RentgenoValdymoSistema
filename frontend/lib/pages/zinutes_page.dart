@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/page_panel.dart';
 
 class ZinutesPage extends StatefulWidget {
   const ZinutesPage({super.key});
@@ -145,7 +146,7 @@ class _ZinutesPageState extends State<ZinutesPage> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      padding: EdgeInsets.zero,
       itemCount: items.length,
       separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (ctx, idx) {
@@ -234,8 +235,9 @@ class _ZinutesPageState extends State<ZinutesPage> {
           ),
         ],
         body: SafeArea(
-          child: Column(
-            children: [
+          child: PagePanel(
+            child: Column(
+              children: [
               const Material(
                 child: TabBar(
                   tabs: [
@@ -256,6 +258,7 @@ class _ZinutesPageState extends State<ZinutesPage> {
           ),
         ),
       ),
+    ),
     );
   }
 }

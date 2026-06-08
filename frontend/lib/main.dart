@@ -22,11 +22,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Colors.teal;
+    // Bolder, modern theme: vibrant seed and pronounced surfaces/buttons.
+    const seed = Color(0xFF6A1B9A); // deep purple accent
     final scheme = ColorScheme.fromSeed(
       seedColor: seed,
-      brightness: Brightness.dark,
-      contrastLevel: 0.35,
+      brightness: Brightness.light,
+      // keep contrast high so components pop on desktop and mobile
+      contrastLevel: 0.4,
     );
 
     return MaterialApp(
@@ -39,23 +41,25 @@ class MyApp extends StatelessWidget {
           centerTitle: false,
           backgroundColor: scheme.surface,
           foregroundColor: scheme.onSurface,
-          elevation: 0,
-          scrolledUnderElevation: 1,
+          elevation: 2,
+          scrolledUnderElevation: 4,
           surfaceTintColor: scheme.surfaceTint,
-          titleTextStyle: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
+          titleTextStyle: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
             letterSpacing: 0.2,
+            color: scheme.onSurface,
           ),
         ),
         cardTheme: CardThemeData(
-          elevation: 0,
-          color: scheme.surfaceContainerHigh,
+          elevation: 6,
+          color: scheme.surfaceContainerHighest,
           surfaceTintColor: scheme.surfaceTint,
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
           ),
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
         ),
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
@@ -67,28 +71,37 @@ class MyApp extends StatelessWidget {
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
             ),
-            textStyle: const TextStyle(fontWeight: FontWeight.w600),
+            textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            backgroundColor: scheme.primary,
+            foregroundColor: scheme.onPrimary,
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
             ),
+            side: BorderSide(color: scheme.primary.withAlpha((0.9 * 255).round())),
             textStyle: const TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
         floatingActionButtonTheme: FloatingActionButtonThemeData(
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
+          backgroundColor: scheme.secondary,
+          foregroundColor: scheme.onSecondary,
+          elevation: 6,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
+        ),
+        textTheme: TextTheme(
+          titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: scheme.onSurface),
+          bodyLarge: TextStyle(fontSize: 16, color: scheme.onSurface),
+          bodyMedium: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
         ),
       ),
       initialRoute: '/',

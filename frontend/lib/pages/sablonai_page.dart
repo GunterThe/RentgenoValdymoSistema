@@ -4,6 +4,7 @@ import '../models/sablonas.dart';
 import '../models/testas.dart';
 import '../services/api.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/page_panel.dart';
 
 class SablonaiPage extends StatefulWidget {
   const SablonaiPage({super.key});
@@ -468,8 +469,7 @@ class _SablonaiPageState extends State<SablonaiPage> {
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 900),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  child: PagePanel(
                     child: Card(
                       child: Padding(
                         padding: const EdgeInsets.all(12),

@@ -4,6 +4,7 @@ import '../models/naudotojas.dart';
 import '../services/api.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/page_panel.dart';
 
 class PaskyraPage extends StatefulWidget {
   const PaskyraPage({super.key});
@@ -618,9 +619,10 @@ class _PaskyraPageState extends State<PaskyraPage> {
     return AppScaffold(
       title: 'Paskyra',
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          children: [
+        child: PagePanel(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -785,6 +787,7 @@ class _PaskyraPageState extends State<PaskyraPage> {
           ],
         ),
       ),
+    ),
     );
   }
 }

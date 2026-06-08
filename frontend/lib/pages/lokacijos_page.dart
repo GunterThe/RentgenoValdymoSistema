@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/lokacija.dart';
 import '../services/api.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/page_panel.dart';
 
 class LokacijosPage extends StatefulWidget {
   const LokacijosPage({super.key});
@@ -185,8 +186,7 @@ class _LokacijosPageState extends State<LokacijosPage> {
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 900),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  child: PagePanel(
                     child: Card(
                       child: Padding(
                         padding: const EdgeInsets.all(12),

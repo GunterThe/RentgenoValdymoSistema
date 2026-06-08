@@ -9,6 +9,7 @@ import '../models/zingsnis.dart';
 import '../models/zingsnis_template.dart';
 import 'irasas_zingsniai_page.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/page_panel.dart';
 
 class IrasaiPage extends StatefulWidget {
   const IrasaiPage({super.key});
@@ -965,8 +966,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+              child: PagePanel(
                 child: Column(
                   children: [
                     Row(
