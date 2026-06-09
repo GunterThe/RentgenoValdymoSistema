@@ -519,7 +519,11 @@ class _ChatWidgetState extends State<ChatWidget> with SingleTickerProviderStateM
               width: _expanded ? expandedWidth : collapsedSize,
               height: _expanded ? expandedHeight : collapsedSize,
               decoration: BoxDecoration(
-                color: cs.surface,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [cs.primaryContainer.withAlpha(31), cs.surface],
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: _expanded ? _buildExpandedPanel(cs, isWide) : _buildCollapsedButton(cs),

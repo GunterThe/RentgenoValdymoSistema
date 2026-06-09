@@ -123,8 +123,10 @@ class AppScaffold extends StatelessWidget {
     );
 
     final drawer = Drawer(
-      child: SafeArea(
-        child: Column(
+      child: Container(
+        color: cs.surfaceContainerLow,
+        child: SafeArea(
+          child: Column(
           children: [
             ListTile(
               leading: CircleAvatar(backgroundColor: cs.primary, child: Icon(Icons.person, color: cs.onPrimary)),
@@ -154,13 +156,15 @@ class AppScaffold extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
 
     return Scaffold(
       drawer: isWide ? null : drawer,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         elevation: 0,
-        backgroundColor: cs.surface,
+        backgroundColor: cs.surfaceContainerHighest,
         foregroundColor: cs.onSurface,
         title: Row(
           children: [
@@ -183,7 +187,7 @@ class AppScaffold extends StatelessWidget {
                 if (isWide)
                   Container(
                     width: 92,
-                    color: cs.surfaceContainerHighest.withAlpha(10),
+                    color: cs.surfaceContainerLow,
                     child: navRail,
                   ),
                 Expanded(child: body),

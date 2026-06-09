@@ -8,6 +8,7 @@ import 'pages/paskyra_page.dart';
 import 'pages/reset_password_page.dart';
 import 'pages/chat_page.dart';
 import 'services/auth_service.dart';
+import 'services/api.dart';
 import 'widgets/app_scaffold.dart';
 import 'widgets/auth_guard.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
@@ -33,7 +34,6 @@ class MyApp extends StatelessWidget {
       // keep contrast high so components pop on desktop and mobile
       contrastLevel: 0.4,
     );
-
     return MaterialApp(
       title: 'Rentgeno Valdymas',
       theme: ThemeData(
@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
         ),
         cardTheme: CardThemeData(
           elevation: 6,
-          color: scheme.surfaceContainerHighest,
+          color: scheme.surfaceContainer,
           surfaceTintColor: scheme.surfaceTint,
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
@@ -144,8 +144,52 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MainPage extends StatelessWidget {
+class MainPage extends StatefulWidget {
   const MainPage({super.key});
+
+  @override
+  State<MainPage> createState() => _MainPageState();
+}
+
+class _MainPageState extends State<MainPage> {
+  bool _loading = true;
+  int _irasaiCount = 0;
+  int _testaiCount = 0;
+  int _usersCount = 0;
+  List<Map<String, dynamic>> _recentIrasai = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboard();
+  }
+
+  Future<void> _loadDashboard() async {
+    try {
+      setState(() => _loading = true);
+      final irasai = await Api.fetchIrasai();
+      final testai = await Api.fetchTestai();
+      final naud = await Api.fetchNaudotojai();
+
+      final irasaiList = (irasai).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      irasaiList.sort((a, b) {
+        final da = DateTime.tryParse((a['pradzia'] ?? a['Pradzia'] ?? '').toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final db = DateTime.tryParse((b['pradzia'] ?? b['Pradzia'] ?? '').toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return db.compareTo(da);
+      });
+
+      setState(() {
+        _irasaiCount = irasaiList.length;
+        _testaiCount = (testai).length;
+        _usersCount = (naud).length;
+        _recentIrasai = irasaiList.take(5).toList();
+      });
+    } catch (e) {
+      // ignore - keep defaults
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   Widget _actionTile({
     required BuildContext context,
@@ -202,21 +246,60 @@ class MainPage extends StatelessWidget {
     );
   }
 
-  
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
+    Widget statsTile(String label, String value, IconData icon) => Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: cs.onPrimary),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 2),
+                  Text(label, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
+                ],
+              ),
+            ],
+          ),
+        );
+
     return AppScaffold(
       title: 'Pagrindinis',
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          children: [
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [cs.primaryContainer.withAlpha(31), cs.surface],
+          ),
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(builder: (ctx, constraints) {
+          final isWide = constraints.maxWidth >= 900;
+
+          // Shared children used for both mobile and desktop (stacked column)
+          final children = <Widget>[
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: cs.surfaceContainerLow,
+                color: cs.surfaceContainer,
                 borderRadius: BorderRadius.circular(18),
               ),
               child: Row(
@@ -238,19 +321,9 @@ class MainPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Rentgeno valdymas',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
+                        Text('Rentgeno valdymas', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: 0.2)),
                         SizedBox(height: 2),
-                        Text(
-                          'Greiti veiksmai ir paskutiniai įrašai',
-                          style: TextStyle(fontSize: 13, height: 1.25),
-                        ),
+                        Text('Greiti veiksmai ir paskutiniai įrašai', style: TextStyle(fontSize: 13, height: 1.25)),
                       ],
                     ),
                   ),
@@ -259,56 +332,98 @@ class MainPage extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Card(
-              child: Column(
-                children: [
-                  _actionTile(
-                    context: context,
-                    icon: Icons.article_outlined,
-                    title: 'Peržiūrėti įrašus',
-                    subtitle: 'Atidarykite rentgeno įrašų sąrašą',
-                    onTap: () => Navigator.of(context).pushNamed('/irasai'),
-                  ),
-                  const Divider(height: 1),
-                  _actionTile(
-                    context: context,
-                    icon: Icons.science_outlined,
-                    title: 'Peržiūrėti testus',
-                    subtitle: 'Peržiūra ir testų vykdymas',
-                    onTap: () => Navigator.of(context).pushNamed('/testai'),
-                  ),
-                ],
+              color: cs.surfaceContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    SizedBox(width: 220, child: _actionTile(context: context, icon: Icons.article_outlined, title: 'Įrašai', subtitle: 'Peržiūrėti įrašus', onTap: () => Navigator.of(context).pushNamed('/irasai'))),
+                    SizedBox(width: 220, child: _actionTile(context: context, icon: Icons.science_outlined, title: 'Testai', subtitle: 'Peržiūra ir testų vykdymas', onTap: () => Navigator.of(context).pushNamed('/testai'))),
+                    SizedBox(width: 220, child: _actionTile(context: context, icon: Icons.place_outlined, title: 'Lokacijos', subtitle: 'Valdyti lokacijas', onTap: () => Navigator.of(context).pushNamed('/lokacijos'))),
+                    SizedBox(width: 220, child: _actionTile(context: context, icon: Icons.layers_outlined, title: 'Šablonai', subtitle: 'Tvarkyti šablonus', onTap: () => Navigator.of(context).pushNamed('/sablonai'))),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => Navigator.of(context).pushNamed('/testai'),
-                    icon: const Icon(Icons.list_alt),
-                    label: const Text('Testai'),
-                  ),
-                ),
+                Expanded(child: statsTile('Įrašai', _loading ? '...' : '$_irasaiCount', Icons.article_outlined)),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () =>
-                        Navigator.of(context).pushNamed('/lokacijos'),
-                    icon: const Icon(Icons.place_outlined),
-                    label: const Text('Lokacijos'),
-                  ),
-                ),
+                Expanded(child: statsTile('Testai', _loading ? '...' : '$_testaiCount', Icons.science_outlined)),
+                const SizedBox(width: 12),
+                Expanded(child: statsTile('Vartotojai', _loading ? '...' : '$_usersCount', Icons.group_outlined)),
               ],
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).pushNamed('/sablonai'),
-              icon: const Icon(Icons.layers_outlined),
-              label: const Text('Šablonai'),
+            Card(
+              color: cs.surfaceContainer,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ListTile(
+                    title: const Text('Naujausi įrašai', style: TextStyle(fontWeight: FontWeight.w800)),
+                    trailing: TextButton(onPressed: () => Navigator.of(context).pushNamed('/irasai'), child: const Text('Peržiūrėti visus')),
+                  ),
+                  const Divider(height: 1),
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_recentIrasai.isEmpty)
+                    const ListTile(title: Text('Nėra naujų įrašų'))
+                  else
+                    for (var i = 0; i < _recentIrasai.length; i++)
+                      ListTile(
+                        leading: CircleAvatar(child: Text('${i + 1}')),
+                        title: Text((_recentIrasai[i]['pavadinimas'] ?? _recentIrasai[i]['Pavadinimas'] ?? 'Įrašas').toString()),
+                        subtitle: Text('Pradžia: ${(_recentIrasai[i]['pradzia'] ?? _recentIrasai[i]['Pradzia'] ?? '').toString().split('T').first}'),
+                        onTap: () => Navigator.of(context).pushNamed('/irasai'),
+                      ),
+                ],
+              ),
             ),
-          ],
-        ),
+            const SizedBox(height: 12),
+            Card(
+              color: cs.surfaceContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Pranešimai', style: TextStyle(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    Text('Visos sistemos veiklos santrauka pateikiama čia.', style: TextStyle(color: cs.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ),
+          ];
+
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            child: isWide
+                ? Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 900),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: children,
+                        ),
+                      ),
+                    ),
+                  )
+                : ListView(
+                    children: children,
+                  ),
+          );
+        }),
       ),
+    ),
     );
   }
 }
