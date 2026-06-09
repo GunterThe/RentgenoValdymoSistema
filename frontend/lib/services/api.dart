@@ -229,18 +229,40 @@ class Api {
     required String userId,
     required String newPassword,
   }) async {
+    // Deprecated: server now generates a reset link instead of setting password directly.
+    await adminGenerateResetLink(userId: userId);
+  }
+
+  static Future<Map<String, dynamic>> adminGenerateResetLink({
+    required String userId,
+  }) async {
     final res = await _requestWithRefresh((h) {
       final headers = {...h, 'Content-Type': 'application/json'};
-      return http.put(
-        Uri.parse('$baseUrl/api/Naudotojas/setPassword/$userId'),
+      return http.post(
+        Uri.parse('$baseUrl/api/Naudotojas/generateResetLink/$userId'),
         headers: headers,
-        body: jsonEncode({'newPassword': newPassword}),
       );
     });
+    if (res.statusCode != 201) {
+      throw Exception('Failed to generate reset link (${res.statusCode}): ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    // This endpoint is anonymous; avoid sending Authorization headers
+    // which may contain expired tokens and cause an unintended logout.
+    final uri = Uri.parse('$baseUrl/api/Naudotojas/resetPassword');
+    final res = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'token': token, 'newPassword': newPassword}),
+    );
     if (res.statusCode != 204) {
-      throw Exception(
-        'Failed to set password (${res.statusCode}): ${res.body}',
-      );
+      throw Exception('Failed to reset password (${res.statusCode}): ${res.body}');
     }
   }
 

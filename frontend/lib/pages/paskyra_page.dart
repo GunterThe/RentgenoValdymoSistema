@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/naudotojas.dart';
 import '../services/api.dart';
+import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/page_panel.dart';
@@ -143,9 +144,6 @@ class _PaskyraPageState extends State<PaskyraPage> {
   Future<void> _showAdminSetPasswordDialog() async {
     if (!_isAdmin) return;
     await _ensureUsersLoaded();
-
-    final pw1 = TextEditingController();
-    final pw2 = TextEditingController();
     final selectableUsers = _isSuperAdmin
         ? _users
         : _users.where((u) => u.adminas != true).toList();
@@ -164,40 +162,81 @@ class _PaskyraPageState extends State<PaskyraPage> {
         _snack('Pasirinkite naudotoją');
         return;
       }
-      final new1 = pw1.text;
-      final new2 = pw2.text;
-
-      if (new1.trim().isEmpty || new2.trim().isEmpty) {
-        _snack('Įveskite naują slaptažodį');
-        return;
-      }
-      if (new1 != new2) {
-        _snack('Nauji slaptažodžiai nesutampa');
-        return;
-      }
-      if (new1.trim().length < 6) {
-        _snack('Naujas slaptažodis turi būti bent 6 simbolių');
-        return;
-      }
 
       setStateDialog(() => busy = true);
       try {
-        await Api.adminSetPassword(userId: targetUserId, newPassword: new1);
+        final resp = await Api.adminGenerateResetLink(userId: targetUserId);
         if (!mounted) {
           closing = true;
           return;
         }
-        setState(() => _selectedUserId = targetUserId);
+        final link = (resp['link'] ?? resp['Link'] ?? '').toString();
+        final token = (resp['token'] ?? resp['Token'] ?? '').toString();
+
+        // Build absolute URL for display/copy and ensure it contains the hash routing prefix
+        String makeDisplay(String l, String t) {
+          if (l.isNotEmpty) {
+            // If backend returned a path like "/reset-password?token=..." -> prefix with /#
+            if (l.startsWith('/#/')) return Uri.base.origin + l;
+            if (l.startsWith('/')) return Uri.base.origin + '/#' + l;
+            // If backend returned an absolute http(s) URL, insert /# before path
+            if (l.startsWith('http://') || l.startsWith('https://')) {
+              try {
+                final u = Uri.parse(l);
+                final pathAndQuery = u.path + (u.hasQuery ? '?${u.query}' : '');
+                return u.origin + '/#' + pathAndQuery;
+              } catch (_) {
+                return l;
+              }
+            }
+            // otherwise treat as relative
+            return Uri.base.origin + '/#/' + l;
+          }
+          if (t.isNotEmpty) return Uri.base.origin + '/#/reset-password?token=$t';
+          return '';
+        }
+
+        final displayLink = makeDisplay(link, token);
 
         closing = true;
         Navigator.of(context).pop();
-        _snack('Naudotojo slaptažodis pakeistas');
+        setState(() => _selectedUserId = targetUserId);
+
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Sukurtas slaptažodžio atnaujinimo nuoroda'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SelectableText(displayLink),
+                const SizedBox(height: 10),
+                const Text('Nuoroda galioja 24 valandas.'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Uždaryti'),
+              ),
+              TextButton(
+                onPressed: () {
+                  final toCopy = displayLink;
+                  Clipboard.setData(ClipboardData(text: toCopy));
+                  Navigator.of(ctx).pop();
+                  _snack('Kopijuota į iškarpinę');
+                },
+                child: const Text('Kopijuoti'),
+              ),
+            ],
+          ),
+        );
       } catch (e) {
         if (!mounted) {
           closing = true;
           return;
         }
-        _snack('Nepavyko pakeisti naudotojo slaptažodžio: $e');
+        _snack('Nepavyko sugeneruoti nuorodos: $e');
       } finally {
         if (!closing) {
           setStateDialog(() => busy = false);
@@ -209,7 +248,7 @@ class _PaskyraPageState extends State<PaskyraPage> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Keisti naudotojo slaptažodį'),
+        title: const Text('Generuoti slaptažodžio atnaujinimo nuorodą'),
         content: StatefulBuilder(
           builder: (ctx, setStateDialog) {
             setStateDialogRef = setStateDialog;
@@ -222,7 +261,7 @@ class _PaskyraPageState extends State<PaskyraPage> {
                     child: LinearProgressIndicator(),
                   ),
                 if (selectableUsers.isEmpty)
-                  const Text('Nėra naudotojų, kuriems galima keisti slaptažodį')
+                  const Text('Nėra naudotojų, kuriems galima generuoti nuorodą')
                 else
                   DropdownButtonFormField<String>(
                     initialValue: selected,
@@ -244,24 +283,6 @@ class _PaskyraPageState extends State<PaskyraPage> {
                       border: OutlineInputBorder(),
                     ),
                   ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: pw1,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Naujas slaptažodis',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: pw2,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Pakartokite naują slaptažodį',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
               ],
             );
           },
@@ -279,14 +300,11 @@ class _PaskyraPageState extends State<PaskyraPage> {
                     if (s == null) return;
                     submit(s);
                   },
-            child: Text(busy ? 'Vykdoma...' : 'Pakeisti'),
+            child: Text(busy ? 'Vykdoma...' : 'Generuoti'),
           ),
         ],
       ),
     );
-
-    pw1.dispose();
-    pw2.dispose();
   }
 
   Future<void> _showSuperAdminToggleAdminDialog() async {

@@ -40,6 +40,18 @@ namespace Backend.Controllers
             public string NewPassword { get; set; } = string.Empty;
         }
 
+        public sealed class GenerateResetLinkResponse
+        {
+            public string Token { get; set; } = string.Empty;
+            public string Link { get; set; } = string.Empty;
+        }
+
+        public sealed class ResetPasswordRequest
+        {
+            public string Token { get; set; } = string.Empty;
+            public string NewPassword { get; set; } = string.Empty;
+        }
+
         public sealed class NaudotojasListItem
         {
             public Guid Id { get; set; }
@@ -220,20 +232,14 @@ namespace Backend.Controllers
             return NoContent();
         }
 
-        [HttpPut("setPassword/{id:guid}")]
+        [HttpPost("generateResetLink/{id:guid}")]
         [Authorize(Policy = "AdminOnly")]
-        public async Task<IActionResult> AdminSetPassword(Guid id, [FromBody] AdminSetPasswordRequest req)
+        public async Task<ActionResult<GenerateResetLinkResponse>> AdminGenerateResetLink(Guid id)
         {
             var currentUserId = TryGetCurrentUserId();
             if (currentUserId == null)
             {
                 return Unauthorized(new { message = "Invalid user context" });
-            }
-
-            var newPassword = (req.NewPassword ?? string.Empty).Trim();
-            if (!IsPasswordAcceptable(newPassword))
-            {
-                return BadRequest(new { message = "Naujas slaptažodis turi būti bent 6 simboliai" });
             }
 
             var user = await _db.Naudotojai.FindAsync(id);
@@ -245,10 +251,62 @@ namespace Backend.Controllers
                 return Forbid();
             }
 
+            var token = Guid.NewGuid().ToString("N");
+            var expires = DateTime.UtcNow.AddDays(1);
+
+            var prt = new PasswordResetToken
+            {
+                Token = token,
+                NaudotojasId = user.Id,
+                ExpiresAt = expires,
+                Used = false
+            };
+            _db.PasswordResetTokens.Add(prt);
+            await _db.SaveChangesAsync();
+
+            var link = $"/reset-password?token={token}"; // frontend should construct full URL if needed
+
+            var resp = new GenerateResetLinkResponse
+            {
+                Token = token,
+                Link = link
+            };
+
+            return CreatedAtAction(nameof(AdminGenerateResetLink), new { id = prt.Id }, resp);
+        }
+
+        [HttpPost("resetPassword")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req)
+        {
+            var token = (req.Token ?? string.Empty).Trim();
+            var newPassword = (req.NewPassword ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(newPassword))
+            {
+                return BadRequest(new { message = "Token and new password are required" });
+            }
+            if (!IsPasswordAcceptable(newPassword))
+            {
+                return BadRequest(new { message = "Naujas slaptažodis turi būti bent 6 simboliai" });
+            }
+
+            var prt = await _db.PasswordResetTokens
+                .Where(p => p.Token == token)
+                .FirstOrDefaultAsync();
+            if (prt == null) return NotFound(new { message = "Invalid token" });
+            if (prt.Used) return BadRequest(new { message = "Token already used" });
+            if (EnsureUtc(prt.ExpiresAt) < DateTime.UtcNow) return BadRequest(new { message = "Token expired" });
+
+            var user = await _db.Naudotojai.FindAsync(prt.NaudotojasId);
+            if (user == null) return NotFound(new { message = "User not found" });
+
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-            user.MustChangePassword = true;
+            user.MustChangePassword = false;
+            prt.Used = true;
+
             await RevokeAllRefreshTokens(user.Id);
             await _db.SaveChangesAsync();
+
             return NoContent();
         }
 

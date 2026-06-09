@@ -5,15 +5,19 @@ import 'pages/sablonai_page.dart';
 import 'pages/testai_page.dart';
 import 'pages/login_page.dart';
 import 'pages/paskyra_page.dart';
+import 'pages/reset_password_page.dart';
 import 'pages/zinutes_page.dart';
 import 'services/auth_service.dart';
 import 'services/api.dart';
 import 'widgets/app_scaffold.dart';
 import 'widgets/auth_guard.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AuthService.instance.init();
+  // Use hash-based routing so links like /#/reset-password?token=... work
+  setUrlStrategy(const HashUrlStrategy());
   runApp(const MyApp());
 }
 
@@ -104,12 +108,12 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
         ),
       ),
-      initialRoute: '/',
       routes: {
         '/login': (_) => AuthService.instance.isAuthenticated
             ? const MainPage()
             : const LoginPage(),
         '/': (_) => const AuthGuard(protectedRoute: '/', child: MainPage()),
+        '/reset-password': (_) => const ResetPasswordPage(),
         '/paskyra': (_) =>
           const AuthGuard(protectedRoute: '/paskyra', child: PaskyraPage()),
         '/irasai': (_) =>
@@ -124,6 +128,18 @@ class MyApp extends StatelessWidget {
             const AuthGuard(protectedRoute: '/sablonai', child: SablonaiPage()),
         '/zinutes': (_) =>
             const AuthGuard(protectedRoute: '/zinutes', child: ZinutesPage()),
+      },
+      onGenerateRoute: (settings) {
+        final name = settings.name ?? '/';
+        final uri = Uri.parse(name);
+        if (uri.path == '/reset-password') {
+          final token = uri.queryParameters['token'];
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => ResetPasswordPage(tokenFromArgs: token),
+          );
+        }
+        return null;
       },
     );
   }

@@ -18,6 +18,7 @@ namespace Backend.Data
         public DbSet<TestasIrasas> TestasIrasai { get; set; } = null!;
         public DbSet<PrisegtasFailas> PrisegtiFailai { get; set; } = null!;
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
         public DbSet<Zingsnis> Zingsniai { get; set; } = null!;
         public DbSet<ZingsnisTemplate> ZingsnisTemplate { get; set; } = null!;
         public DbSet<Lokacija> Lokacijos { get; set; } = null!;
