@@ -8,12 +8,14 @@ using Microsoft.OpenApi;
 using System.Text;
 using Npgsql;
 using System.Text.Json;
+using Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -131,7 +133,8 @@ builder.Services.AddAuthentication(options =>
             {
                 var path = context.HttpContext.Request.Path;
                 if (path.StartsWithSegments("/api/prisegtasfailas/file") ||
-                    path.StartsWithSegments("/api/prisegtasfailas/download"))
+                    path.StartsWithSegments("/api/prisegtasfailas/download") ||
+                    path.StartsWithSegments("/chathub"))
                 {
                     context.Token = accessToken;
                 }
@@ -254,6 +257,7 @@ app.UseStatusCodePages(async statusCodeContext =>
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapHub<Chathub>("/chathub");
 
 app.MapControllers();
 

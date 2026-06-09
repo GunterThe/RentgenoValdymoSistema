@@ -99,6 +99,19 @@ namespace Backend.Controllers
             var now = DateTime.UtcNow;
             foreach (var t in tokens) t.Revoked = now;
         }
+        [HttpGet("forChat")]
+        public async Task<ActionResult<IEnumerable<NaudotojasListItem>>> GetAllForChat()
+        {
+            var list = await _db.Naudotojai
+                .Select(u => new NaudotojasListItem
+                {
+                    Id = u.Id,
+                    Vardas = u.Vardas,
+                    Pavarde = u.Pavarde,
+                })
+                .ToListAsync();
+            return Ok(list);
+        }
 
         [HttpGet]
         [Authorize(Policy = "AdminOnly")]

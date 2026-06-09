@@ -6,9 +6,8 @@ import 'pages/testai_page.dart';
 import 'pages/login_page.dart';
 import 'pages/paskyra_page.dart';
 import 'pages/reset_password_page.dart';
-import 'pages/zinutes_page.dart';
+import 'pages/chat_page.dart';
 import 'services/auth_service.dart';
-import 'services/api.dart';
 import 'widgets/app_scaffold.dart';
 import 'widgets/auth_guard.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
@@ -126,8 +125,8 @@ class MyApp extends StatelessWidget {
         ),
         '/sablonai': (_) =>
             const AuthGuard(protectedRoute: '/sablonai', child: SablonaiPage()),
-        '/zinutes': (_) =>
-            const AuthGuard(protectedRoute: '/zinutes', child: ZinutesPage()),
+        '/pokalbiai': (_) =>
+            const AuthGuard(protectedRoute: '/pokalbiai', child: ChatPage()),
       },
       onGenerateRoute: (settings) {
         final name = settings.name ?? '/';
@@ -147,84 +146,6 @@ class MyApp extends StatelessWidget {
 
 class MainPage extends StatelessWidget {
   const MainPage({super.key});
-
-  Future<void> _showQuickMessageDialog(BuildContext context) async {
-    final ctrl = TextEditingController();
-    var busy = false;
-    StateSetter? setStateDialog;
-    var closing = false;
-
-    Future<void> submit() async {
-      final text = ctrl.text.trim();
-      if (text.isEmpty) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Įveskite žinutę')));
-        return;
-      }
-
-      final s = setStateDialog;
-      if (s == null) return;
-
-      s(() => busy = true);
-      try {
-        await Api.sendMessageToAdmins(tekstas: text);
-        if (!context.mounted) {
-          closing = true;
-          return;
-        }
-        closing = true;
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Žinutė išsiųsta')));
-      } catch (e) {
-        if (!context.mounted) {
-          closing = true;
-          return;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Nepavyko išsiųsti: $e')),
-        );
-      } finally {
-        if (!closing) {
-          s(() => busy = false);
-        }
-      }
-    }
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Greita žinutė administratoriui'),
-        content: StatefulBuilder(
-          builder: (ctx, s) {
-            setStateDialog = s;
-            return TextField(
-              controller: ctrl,
-              minLines: 2,
-              maxLines: 5,
-              enabled: !busy,
-              decoration: const InputDecoration(
-                labelText: 'Žinutė',
-                border: OutlineInputBorder(),
-              ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: busy ? null : () => Navigator.of(ctx).pop(),
-            child: const Text('Atšaukti'),
-          ),
-          FilledButton(
-            onPressed: busy ? null : submit,
-            child: Text(busy ? 'Siunčiama...' : 'Siųsti'),
-          ),
-        ],
-      ),
-    );
-
-    ctrl.dispose();
-  }
 
   Widget _actionTile({
     required BuildContext context,
@@ -280,6 +201,8 @@ class MainPage extends StatelessWidget {
       ),
     );
   }
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -385,11 +308,6 @@ class MainPage extends StatelessWidget {
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showQuickMessageDialog(context),
-        icon: const Icon(Icons.send_outlined),
-        label: const Text('Žinutė'),
       ),
     );
   }
