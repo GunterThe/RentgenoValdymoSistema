@@ -6,11 +6,13 @@ import 'pages/testai_page.dart';
 import 'pages/login_page.dart';
 import 'pages/paskyra_page.dart';
 import 'pages/reset_password_page.dart';
-import 'pages/chat_page.dart';
+import 'pages/irasas_zingsniai_page.dart';
+import 'models/irasas.dart';
 import 'services/auth_service.dart';
 import 'services/api.dart';
 import 'widgets/app_scaffold.dart';
 import 'widgets/auth_guard.dart';
+import 'widgets/chat_widget.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
 Future<void> main() async {
@@ -125,8 +127,13 @@ class MyApp extends StatelessWidget {
         ),
         '/sablonai': (_) =>
             const AuthGuard(protectedRoute: '/sablonai', child: SablonaiPage()),
-        '/pokalbiai': (_) =>
-            const AuthGuard(protectedRoute: '/pokalbiai', child: ChatPage()),
+        '/pokalbiai': (_) => AuthGuard(
+              protectedRoute: '/pokalbiai',
+              child: Scaffold(
+                appBar: AppBar(title: const Text('Pokalbiai')),
+                body: const ChatWidget(),
+              ),
+            ),
       },
       onGenerateRoute: (settings) {
         final name = settings.name ?? '/';
@@ -381,7 +388,12 @@ class _MainPageState extends State<MainPage> {
                         leading: CircleAvatar(child: Text('${i + 1}')),
                         title: Text((_recentIrasai[i]['pavadinimas'] ?? _recentIrasai[i]['Pavadinimas'] ?? 'Įrašas').toString()),
                         subtitle: Text('Pradžia: ${(_recentIrasai[i]['pradzia'] ?? _recentIrasai[i]['Pradzia'] ?? '').toString().split('T').first}'),
-                        onTap: () => Navigator.of(context).pushNamed('/irasai'),
+                        onTap: () {
+                          // Navigate directly to the iraso zingsniai page for this record
+                          final map = Map<String, dynamic>.from(_recentIrasai[i]);
+                          final irasas = Irasas.fromJson(map);
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => IrasasZingsniaiPage(irasas: irasas)));
+                        },
                       ),
                 ],
               ),

@@ -41,6 +41,7 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
   Map<int, Testas> _testaiById = {};
   Map<int, List<ZingsnisTemplate>> _templatesByTestasId = {};
   Map<String, Zingsnis> _zingsniaiByKey = {};
+  int? _selectedLinkId;
 
   final Map<int, List<PrisegtasFailas>> _failaiByZingsnisId = {};
   final Set<int> _loadingFailaiForZingsnis = {};
@@ -255,6 +256,7 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
             );
           }
         }
+          _selectedLinkId = links.isNotEmpty ? links.first.id : null;
       });
     } catch (e) {
       if (!mounted) return;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api.dart';
 import '../models/irasas.dart';
@@ -30,6 +31,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
   Map<int, String> _komentaraiByIrasasId = {};
   bool _komentaraiLoaded = false;
   bool _komentaraiLoading = false;
+  Timer? _searchDebounce;
 
   String _normalizeKomentaras(String? s) {
     final t = (s ?? '').trim();
@@ -118,6 +120,12 @@ class _IrasaiPageState extends State<IrasaiPage> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -949,6 +957,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
   @override
   Widget build(BuildContext context) {
     final shown = _filteredAndSortedItems();
+    final cs = Theme.of(context).colorScheme;
     return AppScaffold(
       title: 'Peržiūrėti įrašus',
       actions: [
@@ -966,8 +975,19 @@ class _IrasaiPageState extends State<IrasaiPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-              child: PagePanel(
-                child: Column(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      cs.primary.withOpacity(0.04),
+                      cs.surfaceContainerHighest.withOpacity(0.12),
+                    ],
+                  ),
+                ),
+                child: PagePanel(
+                  child: Column(
                   children: [
                     Row(
                       children: [
@@ -979,10 +999,12 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                   'Paieška pagal pavadinimą / dokumento ID / komentarą',
                             ),
                             onChanged: (v) {
-                              setState(() => _query = v);
-                              if (v.trim().isNotEmpty) {
-                                _ensureKomentaraiIndexLoaded();
-                              }
+                              _searchDebounce?.cancel();
+                              _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+                                if (!mounted) return;
+                                setState(() => _query = v);
+                                if (v.trim().isNotEmpty) _ensureKomentaraiIndexLoaded();
+                              });
                             },
                           ),
                         ),
@@ -1108,113 +1130,69 @@ class _IrasaiPageState extends State<IrasaiPage> {
 
                                           return Card(
                                             margin: EdgeInsets.zero,
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.fromLTRB(
-                                                    12,
-                                                    10,
-                                                    12,
-                                                    8,
-                                                  ),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.stretch,
-                                                children: [
-                                                  Text(
-                                                    it.pavadinimas,
-                                                    style: const TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      letterSpacing: 0.1,
+                                            color: cs.surfaceContainerHighest,
+                                            child: InkWell(
+                                              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IrasasZingsniaiPage(irasas: it))),
+                                              child: Padding(
+                                                padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+                                                child: ListTile(
+                                                  contentPadding: EdgeInsets.zero,
+                                                  leading: Container(
+                                                    width: 44,
+                                                    height: 44,
+                                                    decoration: BoxDecoration(
+                                                      color: (() {
+                                                        final s = it.statusas.toLowerCase();
+                                                        if (s.startsWith('neprad')) return Colors.orange.shade200;
+                                                        if (s.startsWith('pabaig')) return Colors.green.shade200;
+                                                        return cs.primaryContainer;
+                                                      })(),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Center(
+                                                      child: Text(
+                                                        status.isNotEmpty ? status[0].toUpperCase() : '?',
+                                                        style: TextStyle(
+                                                          color: cs.onPrimaryContainer,
+                                                          fontWeight: FontWeight.w700,
+                                                        ),
+                                                      ),
                                                     ),
                                                   ),
-                                                  const SizedBox(height: 6),
-                                                  Text(
-                                                    'Dokumento ID: ${it.idDokumento}',
-                                                    style: TextStyle(
-                                                      color: cs.onSurfaceVariant,
-                                                    ),
+                                                  title: Text(it.pavadinimas, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                                  subtitle: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      const SizedBox(height: 4),
+                                                      Text('ID: ${it.idDokumento} • $lok', style: TextStyle(color: cs.onSurfaceVariant)),
+                                                      Text('Laikas: $pr – $pb', style: TextStyle(color: cs.onSurfaceVariant)),
+                                                    ],
                                                   ),
-                                                  Text(
-                                                    'Lokacija: $lok',
-                                                    style: TextStyle(
-                                                      color: cs.onSurfaceVariant,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    'Statusas: $status',
-                                                    style: TextStyle(
-                                                      color: cs.onSurfaceVariant,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    'Laikas: $pr – $pb',
-                                                    style: TextStyle(
-                                                      color: cs.onSurfaceVariant,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  Wrap(
-                                                    alignment: WrapAlignment.end,
+                                                  trailing: Row(
+                                                    mainAxisSize: MainAxisSize.min,
                                                     children: [
                                                       IconButton(
-                                                        tooltip: 'Peržiūrėti',
-                                                        onPressed: () =>
-                                                            Navigator.of(context)
-                                                                .push(
-                                                          MaterialPageRoute(
-                                                            builder: (_) =>
-                                                                IrasasZingsniaiPage(
-                                                              irasas: it,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        icon: const Icon(
-                                                          Icons
-                                                              .remove_red_eye_outlined,
-                                                        ),
-                                                      ),
-                                                      IconButton(
                                                         tooltip: 'Redaguoti',
-                                                        onPressed: () =>
-                                                            _editIrasas(it),
-                                                        icon: const Icon(
-                                                          Icons.edit,
-                                                        ),
+                                                        onPressed: () => _editIrasas(it),
+                                                        icon: const Icon(Icons.edit),
                                                       ),
-                                                      IconButton(
-                                                        tooltip:
-                                                            'Pridėti testą',
-                                                        onPressed: () =>
-                                                            _addTestToIrasas(it),
-                                                        icon: const Icon(
-                                                          Icons.playlist_add,
-                                                        ),
-                                                      ),
-                                                      IconButton(
-                                                        tooltip:
-                                                            'Pašalinti testą',
-                                                        onPressed: () =>
-                                                            _removeTestFromIrasas(
-                                                              it,
-                                                            ),
-                                                        icon: const Icon(
-                                                          Icons
-                                                              .playlist_remove,
-                                                        ),
-                                                      ),
-                                                      IconButton(
-                                                        tooltip: 'Ištrinti',
-                                                        onPressed: () =>
-                                                            _deleteIrasas(it),
-                                                        icon: const Icon(
-                                                          Icons.delete_outline,
-                                                        ),
+                                                      PopupMenuButton<int>(
+                                                        onSelected: (v) {
+                                                          if (v == 1) _addTestToIrasas(it);
+                                                          if (v == 2) _removeTestFromIrasas(it);
+                                                          if (v == 3) _deleteIrasas(it);
+                                                          if (v == 4) Navigator.of(context).push(MaterialPageRoute(builder: (_) => IrasasZingsniaiPage(irasas: it)));
+                                                        },
+                                                        itemBuilder: (_) => [
+                                                          const PopupMenuItem(value: 4, child: Text('Peržiūrėti')),
+                                                          const PopupMenuItem(value: 1, child: Text('Pridėti testą')),
+                                                          const PopupMenuItem(value: 2, child: Text('Pašalinti testą')),
+                                                          const PopupMenuItem(value: 3, child: Text('Ištrinti')),
+                                                        ],
                                                       ),
                                                     ],
                                                   ),
-                                                ],
+                                                ),
                                               ),
                                             ),
                                           );
@@ -1364,6 +1342,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
                 ),
               ),
             ),
+        ),
     );
   }
 }
