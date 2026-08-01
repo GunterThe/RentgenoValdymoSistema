@@ -973,17 +973,19 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                   ),
                                                 ),
                                               const SizedBox(height: 10),
-                                              TextField(
-                                                controller:
-                                                    draft.komentarasCtrl,
-                                                enabled: true,
-                                                decoration: InputDecoration(
-                                                  labelText: komentarasLabel,
+                                              if (tpl.komentarasPrivalomas)
+                                                TextField(
+                                                  controller:
+                                                      draft.komentarasCtrl,
+                                                  enabled: true,
+                                                  decoration: InputDecoration(
+                                                    labelText: komentarasLabel,
+                                                  ),
+                                                  minLines: 1,
+                                                  maxLines: 3,
                                                 ),
-                                                minLines: 1,
-                                                maxLines: 3,
-                                              ),
-                                              const SizedBox(height: 8),
+                                              if (tpl.komentarasPrivalomas)
+                                                const SizedBox(height: 8),
                                               Row(
                                                 children: [
                                                   Expanded(
@@ -1033,34 +1035,36 @@ class _IrasasZingsniaiPageState extends State<IrasasZingsniaiPage> {
                                                 ],
                                               ),
                                               const SizedBox(height: 12),
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      paveikslelisLabel,
-                                                      style: TextStyle(
-                                                        color: Theme.of(context)
-                                                            .colorScheme
-                                                            .onSurfaceVariant,
+                                              if (tpl.nuotraukaPrivaloma)
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        paveikslelisLabel,
+                                                        style: TextStyle(
+                                                          color: Theme.of(context)
+                                                              .colorScheme
+                                                              .onSurfaceVariant,
+                                                        ),
                                                       ),
                                                     ),
-                                                  ),
-                                                  FilledButton.icon(
-                                                    onPressed: () =>
-                                                        _attachFileForStep(
-                                                          link: link,
-                                                          template: tpl,
-                                                        ),
-                                                    icon: const Icon(
-                                                      Icons.attach_file,
+                                                    FilledButton.icon(
+                                                      onPressed: () =>
+                                                          _attachFileForStep(
+                                                            link: link,
+                                                            template: tpl,
+                                                          ),
+                                                      icon: const Icon(
+                                                        Icons.attach_file,
+                                                      ),
+                                                      label: const Text(
+                                                        'Pridėti',
+                                                      ),
                                                     ),
-                                                    label: const Text(
-                                                      'Pridėti',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
+                                                  ],
+                                                ),
+                                              if (tpl.nuotraukaPrivaloma)
+                                                const SizedBox(height: 8),
                                               if (zingsnisId != null &&
                                                   _loadingFailaiForZingsnis
                                                       .contains(zingsnisId))

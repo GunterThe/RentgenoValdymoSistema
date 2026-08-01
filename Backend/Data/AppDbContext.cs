@@ -26,6 +26,12 @@ namespace Backend.Data
         public DbSet<TestasIrasasPrivalomasZingsnisTemplate> TestasIrasasPrivalomiZingsniai { get; set; } = null!;
         public DbSet<Zinute> Zinutes { get; set; } = null!;
         public DbSet<NaudotojasZinute> NaudotojasZinute { get; set; } = null!;
+        public DbSet<Row> Rows { get; set; } = null!;
+        public DbSet<RowValue> RowValues { get; set; } = null!;
+        public DbSet<RowIrasas> RowIrasai { get; set; } = null!;
+        public DbSet<ColumnTemplate> ColumnTemplates { get; set; } = null!;
+        public DbSet<ColumnValue> ColumnValues { get; set; } = null!;
+        public DbSet<Header> Headers { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -33,6 +39,18 @@ namespace Backend.Data
 
             modelBuilder.HasPostgresEnum<TestoTipas>();
 
+            modelBuilder.Entity<RowIrasas>()
+                .HasOne(ri => ri.Row)
+                .WithMany(r => r.Irasas)
+                .HasForeignKey(ri => ri.RowId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RowIrasas>()
+                .HasOne(ri => ri.Irasas)
+                .WithMany(i => i.Rows)
+                .HasForeignKey(ri => ri.IrasasId)
+                .OnDelete(DeleteBehavior.Cascade);
+    
             modelBuilder.Entity<SablonasTestas>()
                 .HasKey(st => new { st.Sablonasid, st.Testasid });
             

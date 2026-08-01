@@ -106,6 +106,12 @@ namespace Backend.Controllers
         {
             var item = await _db.ZingsnisTemplate.FindAsync(id);
             if (item == null) return NotFound();
+            int eile = item.Eile;
+            var siblings = await _db.ZingsnisTemplate
+                .Where(z => z.TestasId == item.TestasId && z.Id != item.Id)
+                .ToListAsync();
+            foreach (var s in siblings.Where(s => s.Eile > eile))
+                s.Eile -= 1;
 
             var tplFiles = await _db.PrisegtiFailai
                 .Where(p => p.ZingsnisTemplateId == id)

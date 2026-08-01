@@ -3,6 +3,7 @@ import '../services/api.dart';
 import '../models/testas.dart';
 import 'zingsnis_page.dart';
 import '../widgets/app_scaffold.dart';
+import 'package:web/web.dart' as web;
 
 class TestaiPage extends StatefulWidget {
   const TestaiPage({super.key});
@@ -141,6 +142,7 @@ class _TestaiPageState extends State<TestaiPage> {
     try {
       await Api.deleteTestas(it.id);
       setState(() => _items.removeWhere((e) => e.id == it.id));
+      web.window.location.reload();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Klaida trynimo metu: $e')));

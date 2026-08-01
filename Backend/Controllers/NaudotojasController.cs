@@ -134,8 +134,7 @@ namespace Backend.Controllers
                 return BadRequest(new { message = "Slaptažodis turi būti bent 6 simboliai" });
             }
 
-            var suffix = Guid.NewGuid().ToString("N").Substring(0, 3);
-            var prisijungimoId = $"{vardas.ToLowerInvariant().Replace(" ", "")}.{pavarde.ToLowerInvariant().Replace(" ", "")}.{suffix}";
+            var prisijungimoId = $"{vardas.ToLowerInvariant().Replace(" ", "")}.{pavarde.ToLowerInvariant().Replace(" ", "")}";
 
             var user = new Naudotojas
             {

@@ -35,6 +35,9 @@ namespace Backend.Models
 
         [JsonIgnore]
         public ICollection<TestasIrasas> Testai { get; set; } = new List<TestasIrasas>();
+
+        [JsonIgnore]
+        public ICollection<RowIrasas> Rows { get; set; } = new List<RowIrasas>();
         
         [JsonIgnore]
         public Lokacija? Lokacija { get; set; }
