@@ -50,7 +50,13 @@ namespace Backend.Data
                 .WithMany(i => i.Rows)
                 .HasForeignKey(ri => ri.IrasasId)
                 .OnDelete(DeleteBehavior.Cascade);
-    
+
+            // `row_irasas` table uses an identity `id` primary key (see sql/create_tables.sql).
+            // Use a unique index on (RowId, IrasasId) instead of a composite primary key.
+            modelBuilder.Entity<RowIrasas>()
+                .HasIndex(ri => new { ri.RowId, ri.IrasasId })
+                .IsUnique();
+
             modelBuilder.Entity<SablonasTestas>()
                 .HasKey(st => new { st.Sablonasid, st.Testasid });
             
