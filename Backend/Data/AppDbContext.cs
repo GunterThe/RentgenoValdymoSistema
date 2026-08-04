@@ -32,6 +32,8 @@ namespace Backend.Data
         public DbSet<ColumnTemplate> ColumnTemplates { get; set; } = null!;
         public DbSet<ColumnValue> ColumnValues { get; set; } = null!;
         public DbSet<Header> Headers { get; set; } = null!;
+        public DbSet<FAT> FATs { get; set; } = null!;
+        public DbSet<FATRow> FATRows { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -71,6 +73,26 @@ namespace Backend.Data
                 .WithMany(t => t.Sablonai)
                 .HasForeignKey(st => st.Testasid)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            
+            modelBuilder.Entity<FAT>()
+                .HasKey(f => f.Id);
+
+            modelBuilder.Entity<FATRow>()
+                .HasKey(fr => new { fr.Fatid, fr.Rowid });
+
+            modelBuilder.Entity<FATRow>()
+                .HasOne(fr => fr.FAT)
+                .WithMany(f => f.Rows)
+                .HasForeignKey(fr => fr.Fatid)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FATRow>()
+                .HasOne(fr => fr.Row)
+                .WithMany(r => r.FATRows)
+                .HasForeignKey(fr => fr.Rowid)
+                .OnDelete(DeleteBehavior.Cascade);
+
 
             modelBuilder.Entity<NaudotojasZinute>()
                 .HasKey(nz => new { nz.Naudotojasid, nz.Zinuteid });

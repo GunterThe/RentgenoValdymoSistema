@@ -112,26 +112,7 @@ namespace Backend.Controllers
                 .ToListAsync();
             foreach (var s in siblings.Where(s => s.Eile > eile))
                 s.Eile -= 1;
-
-            var tplFiles = await _db.PrisegtiFailai
-                .Where(p => p.ZingsnisTemplateId == id)
-                .ToListAsync();
-            foreach (var f in tplFiles)
-            {
-                if (!string.IsNullOrWhiteSpace(f.Nuoroda))
-                {
-                    try
-                    {
-                        var path = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), f.Nuoroda);
-                        if (System.IO.File.Exists(path))
-                            System.IO.File.Delete(path);
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
-            _db.PrisegtiFailai.RemoveRange(tplFiles);
+    
 
             _db.Zingsniai.RemoveRange(_db.Zingsniai.Where(z => z.ZingsnisTemplateId == id));
             _db.ZingsnisTemplate.Remove(item);

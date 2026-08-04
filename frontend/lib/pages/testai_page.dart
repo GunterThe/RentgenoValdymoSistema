@@ -149,6 +149,40 @@ class _TestaiPageState extends State<TestaiPage> {
     }
   }
 
+  Future<void> _copy(Testas it) async {
+    final ctrl = TextEditingController(text: '${it.testotekstas} (kopija)');
+    final ok = await showDialog<bool?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kopijuoti testą'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Nurodykite naują pavadinimą arba palikite tuščią'),
+            const SizedBox(height: 8),
+            TextField(controller: ctrl),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Atšaukti')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Kopijuoti')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    try {
+      final newName = ctrl.text.trim();
+      final created = await Api.copyTestas(it.id, newTestotekstas: newName.isEmpty ? null : newName);
+      setState(() {
+        _items.add(Testas.fromJson(created));
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Klaida kopijuojant: $e')));
+    }
+  }
+
   List<Testas> _filtered() {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return _items;
@@ -279,6 +313,13 @@ class _TestaiPageState extends State<TestaiPage> {
                                                         ),
                                                       ),
                                                       IconButton(
+                                                        tooltip: 'Kopijuoti',
+                                                        onPressed: () => _copy(it),
+                                                        icon: const Icon(
+                                                          Icons.copy,
+                                                        ),
+                                                      ),
+                                                      IconButton(
                                                         tooltip: 'Ištrinti',
                                                         onPressed: () =>
                                                             _delete(it),
@@ -339,6 +380,13 @@ class _TestaiPageState extends State<TestaiPage> {
                                                         icon: const Icon(
                                                           Icons
                                                               .format_list_numbered,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Kopijuoti',
+                                                        onPressed: () => _copy(it),
+                                                        icon: const Icon(
+                                                          Icons.copy,
                                                         ),
                                                       ),
                                                       IconButton(

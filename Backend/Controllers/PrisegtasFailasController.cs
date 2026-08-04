@@ -220,5 +220,79 @@ namespace Backend.Controllers
             await _db.SaveChangesAsync();
             return NoContent();
         }
+
+        [HttpDelete("deleteOrphans")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<IActionResult> DeleteAllOrphans()
+        {
+            var orphanedFiles = await _db.PrisegtiFailai
+                .Where(p => p.ZingsnisId == null && p.ZingsnisTemplateId == null)
+                .ToListAsync();
+
+            foreach (var file in orphanedFiles)
+            {
+                TryDeletePhysicalFile(file.Nuoroda);
+                _db.PrisegtiFailai.Remove(file);
+            }
+
+            await _db.SaveChangesAsync();
+
+            // Additionally remove any physical files under the uploads directory
+            // that are not referenced in the PrisegtasFailai table (Nuoroda).
+            try
+            {
+                var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+                if (Directory.Exists(uploadsRoot))
+                {
+                    var referenced = await _db.PrisegtiFailai
+                        .Where(p => !string.IsNullOrEmpty(p.Nuoroda))
+                        .Select(p => p.Nuoroda!)
+                        .ToListAsync();
+
+                    var referencedFull = new HashSet<string>(referenced.Select(r =>
+                    {
+                        try { return Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), r)); } catch { return string.Empty; }
+                    }).Where(s => !string.IsNullOrEmpty(s)));
+
+                    var allFiles = Directory.GetFiles(uploadsRoot, "*", SearchOption.AllDirectories);
+                    foreach (var f in allFiles)
+                    {
+                        try
+                        {
+                            var full = Path.GetFullPath(f);
+                            if (!referencedFull.Contains(full))
+                            {
+                                System.IO.File.Delete(full);
+                            }
+                        }
+                        catch
+                        {
+                            // ignore individual delete errors
+                        }
+                    }
+
+                    // Remove empty directories under uploads
+                    try
+                    {
+                        foreach (var dir in Directory.GetDirectories(uploadsRoot, "*", SearchOption.AllDirectories).OrderByDescending(d => d.Length))
+                        {
+                            try
+                            {
+                                if (!Directory.EnumerateFileSystemEntries(dir).Any())
+                                    Directory.Delete(dir);
+                            }
+                            catch { }
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch
+            {
+                // ignore scanning errors to avoid failing the operation
+            }
+
+            return NoContent();
+        }
     }
 }

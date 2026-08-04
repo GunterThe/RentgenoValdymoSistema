@@ -16,49 +16,49 @@ namespace Backend.Controllers
 	[ApiController]
 	[Authorize]
 	[Route("api/[controller]")]
-	public class SablonasController : ControllerBase
+	public class FATController : ControllerBase
 	{
 		private readonly AppDbContext _db;
-		public SablonasController(AppDbContext db) => _db = db;
+		public FATController(AppDbContext db) => _db = db;
 
 		[HttpGet]
-		public async Task<ActionResult<IEnumerable<Sablonas>>> GetAll()
+		public async Task<ActionResult<IEnumerable<FAT>>> GetAll()
 		{
-			return await _db.Sablonai.AsNoTracking().ToListAsync();
+			return await _db.FATs.AsNoTracking().ToListAsync();
 		}
 
 		[HttpGet("{id:int}")]
-		public async Task<ActionResult<Sablonas>> GetById(int id)
+		public async Task<ActionResult<FAT>> GetById(int id)
 		{
-			var item = await _db.Sablonai.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+			var item = await _db.FATs.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
 			if (item == null) return NotFound();
 			return item;
 		}
 
 		[HttpPost]
 		[Authorize(Policy = "AdminOnly")]
-		public async Task<ActionResult<Sablonas>> Create(Sablonas model)
+		public async Task<ActionResult<FAT>> Create(FAT model)
 		{
-			if (string.IsNullOrWhiteSpace(model.Pavadinimas))
-				return BadRequest(new { message = "Pavadinimas is required" });
+			if (string.IsNullOrWhiteSpace(model.Title))
+				return BadRequest(new { message = "Title is required" });
 
-			_db.Sablonai.Add(model);
+			_db.FATs.Add(model);
 			await _db.SaveChangesAsync();
 			return CreatedAtAction(nameof(GetById), new { id = model.Id }, model);
 		}
 
 		[HttpPut("{id:int}")]
 		[Authorize(Policy = "AdminOnly")]
-		public async Task<IActionResult> Update(int id, Sablonas model)
+		public async Task<IActionResult> Update(int id, FAT model)
 		{
 			if (id != model.Id) return BadRequest();
-			if (string.IsNullOrWhiteSpace(model.Pavadinimas))
-				return BadRequest(new { message = "Pavadinimas is required" });
+			if (string.IsNullOrWhiteSpace(model.Title))
+				return BadRequest(new { message = "Title is required" });
 
-			var existing = await _db.Sablonai.FirstOrDefaultAsync(s => s.Id == id);
+			var existing = await _db.FATs.FirstOrDefaultAsync(s => s.Id == id);
 			if (existing == null) return NotFound();
 
-			existing.Pavadinimas = model.Pavadinimas;
+			existing.Title = model.Title;
 			await _db.SaveChangesAsync();
 			return NoContent();
 		}
@@ -67,10 +67,10 @@ namespace Backend.Controllers
 		[Authorize(Policy = "AdminOnly")]
 		public async Task<IActionResult> Delete(int id)
 		{
-			var existing = await _db.Sablonai.FirstOrDefaultAsync(s => s.Id == id);
+			var existing = await _db.FATs.FirstOrDefaultAsync(s => s.Id == id);
 			if (existing == null) return NotFound();
 
-			_db.Sablonai.Remove(existing);
+			_db.FATs.Remove(existing);
 			await _db.SaveChangesAsync();
 			return NoContent();
 		}

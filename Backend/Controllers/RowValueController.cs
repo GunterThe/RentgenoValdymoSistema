@@ -32,6 +32,12 @@ namespace Backend.Controllers
         [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<RowValue>> Create(RowValue rowValue)
         {
+            if (string.IsNullOrEmpty(rowValue.Value)) return BadRequest("Value cannot be null.");
+            string temp = rowValue.Value;
+            if (temp != "compliant" || temp != "non-compliant" || temp != "not-specified")
+            {
+                return BadRequest("Value must be 'compliant', 'non-compliant', or 'not-specified'.");
+            }
             _db.RowValues.Add(rowValue);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(Get), new { id = rowValue.Id }, rowValue);

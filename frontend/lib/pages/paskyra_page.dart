@@ -141,159 +141,12 @@ class _PaskyraPageState extends State<PaskyraPage> {
     await _loadUsers();
   }
 
-  Future<void> _showAdminSetPasswordDialog() async {
-    if (!_isAdmin) return;
-    await _ensureUsersLoaded();
-
-    final pw1 = TextEditingController();
-    final pw2 = TextEditingController();
-    final selectableUsers = _isSuperAdmin
-        ? _users
-        : _users.where((u) => u.adminas != true).toList();
-
-    String? selected = _selectedUserId;
-    if (selected == null || selectableUsers.every((u) => u.id != selected)) {
-      selected = selectableUsers.isEmpty ? null : selectableUsers.first.id;
-    }
-    var busy = false;
-    StateSetter? setStateDialogRef;
-    var closing = false;
-
-    Future<void> submit(StateSetter setStateDialog) async {
-      final targetUserId = selected;
-      if (targetUserId == null || targetUserId.isEmpty) {
-        _snack('Pasirinkite naudotoją');
-        return;
-      }
-      final new1 = pw1.text;
-      final new2 = pw2.text;
-
-      if (new1.trim().isEmpty || new2.trim().isEmpty) {
-        _snack('Įveskite naują slaptažodį');
-        return;
-      }
-      if (new1 != new2) {
-        _snack('Nauji slaptažodžiai nesutampa');
-        return;
-      }
-      if (new1.trim().length < 6) {
-        _snack('Naujas slaptažodis turi būti bent 6 simbolių');
-        return;
-      }
-
-      setStateDialog(() => busy = true);
-      try {
-        await Api.adminSetPassword(userId: targetUserId, newPassword: new1);
-        if (!mounted) {
-          closing = true;
-          return;
-        }
-        setState(() => _selectedUserId = targetUserId);
-
-        closing = true;
-        Navigator.of(context).pop();
-        _snack('Naudotojo slaptažodis pakeistas');
-      } catch (e) {
-        if (!mounted) {
-          closing = true;
-          return;
-        }
-        _snack('Nepavyko pakeisti naudotojo slaptažodžio: $e');
-      } finally {
-        if (!closing) {
-          setStateDialog(() => busy = false);
-        }
-      }
-    }
-
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Keisti naudotojo slaptažodį'),
-        content: StatefulBuilder(
-          builder: (ctx, setStateDialog) {
-            setStateDialogRef = setStateDialog;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_loadingUsers)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 10),
-                    child: LinearProgressIndicator(),
-                  ),
-                if (selectableUsers.isEmpty)
-                  const Text('Nėra naudotojų, kuriems galima keisti slaptažodį')
-                else
-                  DropdownButtonFormField<String>(
-                    initialValue: selected,
-                    items: selectableUsers
-                        .map(
-                          (u) => DropdownMenuItem(
-                            value: u.id,
-                            child: Text(u.displayLabel),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: busy
-                        ? null
-                        : (v) {
-                            setStateDialog(() => selected = v);
-                          },
-                    decoration: const InputDecoration(
-                      labelText: 'Naudotojas',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: pw1,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Naujas slaptažodis',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: pw2,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Pakartokite naują slaptažodį',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: busy ? null : () => Navigator.of(ctx).pop(),
-            child: const Text('Atšaukti'),
-          ),
-          FilledButton(
-            onPressed: busy
-                ? null
-                : () {
-                    final s = setStateDialogRef;
-                    if (s == null) return;
-                    submit(s);
-                  },
-            child: Text(busy ? 'Vykdoma...' : 'Pakeisti'),
-          ),
-        ],
-      ),
-    );
-
-    pw1.dispose();
-    pw2.dispose();
-  }
 
   Future<void> _showAdminSetPasswordForUser(String userId) async {
     if (!_isAdmin) return;
     final pw1 = TextEditingController();
     final pw2 = TextEditingController();
+    // ignore: unused_local_variable
     var busy = false;
     StateSetter? setStateDialogRef;
     var closing = false;
@@ -422,6 +275,29 @@ class _PaskyraPageState extends State<PaskyraPage> {
       await _loadUsers();
     } catch (e) {
       _snack('Nepavyko atnaujinti teisių: $e');
+    }
+  }
+
+  Future<void> _confirmDeleteOrphanFiles() async {
+    if (!_isAdmin) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ištrinti nenaudotus failus'),
+        content: const Text('Ar tikrai norite ištrinti diske esančius failus, kurie nėra susieti su DB įrašais?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Atšaukti')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Ištrinti')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    try {
+      await Api.deleteOrphanFiles();
+      _snack('Nenaudoti failai ištrinti');
+    } catch (e) {
+      _snack('Klaida trinant failus: $e');
     }
   }
 
@@ -1005,6 +881,12 @@ class _PaskyraPageState extends State<PaskyraPage> {
                             icon: const Icon(Icons.person_add_alt_1_outlined),
                             label: const Text('Sukurti'),
                           ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: _loadingUsers ? null : () => _confirmDeleteOrphanFiles(),
+                            icon: const Icon(Icons.delete_forever),
+                            label: const Text('Ištrinti nenaudotus failus'),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -1020,58 +902,110 @@ class _PaskyraPageState extends State<PaskyraPage> {
                       const SizedBox(height: 12),
                       if (_loadingUsers) const LinearProgressIndicator(),
                       const SizedBox(height: 8),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          columns: const [
-                            DataColumn(label: Text('Vardas')),
-                            DataColumn(label: Text('Prisijungimo ID')),
-                            DataColumn(label: Text('Taisyklės')),
-                            DataColumn(label: Text('Veiksmai')),
-                          ],
-                          rows: _users
-                              .where((u) {
-                                if (_search.isEmpty) return true;
-                                final s = _search;
-                                final name = u.fullName.toLowerCase();
-                                final pid = (u.prisijungimoId ?? '').toLowerCase();
-                                return name.contains(s) || pid.contains(s);
-                              })
-                              .map(
-                                (u) => DataRow(cells: [
-                                  DataCell(Text(u.fullName)),
-                                  DataCell(Text(u.prisijungimoId ?? '')),
-                                  DataCell(Text(u.adminas == true ? 'Administratorius' : 'Naudotojas')),
-                                  DataCell(Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        tooltip: 'Redaguoti',
-                                        icon: const Icon(Icons.edit),
-                                        onPressed: () => _showEditUserDialog(u),
-                                      ),
-                                      IconButton(
-                                        tooltip: 'Ištrinti',
-                                        icon: const Icon(Icons.delete_outline),
-                                        onPressed: () => _confirmDeleteUser(u.id, u.displayLabel),
-                                      ),
-                                      IconButton(
-                                        tooltip: 'Atstatyti slaptažodį',
-                                        icon: const Icon(Icons.lock_reset),
-                                        onPressed: () => _showAdminSetPasswordForUser(u.id),
-                                      ),
-                                      if (_isSuperAdmin)
-                                        IconButton(
-                                          tooltip: 'Perjungti admin',
-                                          icon: const Icon(Icons.admin_panel_settings_outlined),
-                                          onPressed: () => _toggleAdminForUser(u.id),
-                                        ),
-                                    ],
-                                  )),
-                                ]),
-                              )
-                              .toList(),
-                        ),
+                      LayoutBuilder(
+                        builder: (ctx, constraints) {
+                          final filtered = _users.where((u) {
+                            if (_search.isEmpty) return true;
+                            final s = _search;
+                            final name = u.fullName.toLowerCase();
+                            final pid = (u.prisijungimoId ?? '').toLowerCase();
+                            return name.contains(s) || pid.contains(s);
+                          }).toList();
+
+                          final isNarrow = constraints.maxWidth < 600;
+
+                          if (isNarrow) {
+                            return Column(
+                              children: filtered.map((u) {
+                                return Card(
+                                  margin: const EdgeInsets.symmetric(vertical: 6),
+                                  child: ListTile(
+                                    title: Text(u.fullName),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        if ((u.prisijungimoId ?? '').isNotEmpty) Text(u.prisijungimoId ?? ''),
+                                        Text(u.adminas == true ? 'Administratorius' : 'Naudotojas'),
+                                      ],
+                                    ),
+                                    isThreeLine: true,
+                                    trailing: PopupMenuButton<String>(
+                                      onSelected: (v) {
+                                        if (v == 'edit') {
+                                          _showEditUserDialog(u);
+                                        } else if (v == 'delete') {
+                                          _confirmDeleteUser(u.id, u.displayLabel);
+                                        } else if (v == 'pw') {
+                                          _showAdminSetPasswordForUser(u.id);
+                                        } else if (v == 'toggle' && _isSuperAdmin) {
+                                          _toggleAdminForUser(u.id);
+                                        }
+                                      },
+                                      itemBuilder: (ctx) {
+                                        final items = <PopupMenuEntry<String>>[
+                                          const PopupMenuItem(value: 'edit', child: Text('Redaguoti')),
+                                          const PopupMenuItem(value: 'delete', child: Text('Ištrinti')),
+                                          const PopupMenuItem(value: 'pw', child: Text('Atstatyti slaptažodį')),
+                                        ];
+                                        if (_isSuperAdmin) {
+                                          items.add(const PopupMenuItem(value: 'toggle', child: Text('Perjungti admin')));
+                                        }
+                                        return items;
+                                      },
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          }
+
+                          return SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              columns: const [
+                                DataColumn(label: Text('Vardas')),
+                                DataColumn(label: Text('Prisijungimo ID')),
+                                DataColumn(label: Text('Taisyklės')),
+                                DataColumn(label: Text('Veiksmai')),
+                              ],
+                              rows: filtered
+                                  .map(
+                                    (u) => DataRow(cells: [
+                                      DataCell(Text(u.fullName)),
+                                      DataCell(Text(u.prisijungimoId ?? '')),
+                                      DataCell(Text(u.adminas == true ? 'Administratorius' : 'Naudotojas')),
+                                      DataCell(Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            tooltip: 'Redaguoti',
+                                            icon: const Icon(Icons.edit),
+                                            onPressed: () => _showEditUserDialog(u),
+                                          ),
+                                          IconButton(
+                                            tooltip: 'Ištrinti',
+                                            icon: const Icon(Icons.delete_outline),
+                                            onPressed: () => _confirmDeleteUser(u.id, u.displayLabel),
+                                          ),
+                                          IconButton(
+                                            tooltip: 'Atstatyti slaptažodį',
+                                            icon: const Icon(Icons.lock_reset),
+                                            onPressed: () => _showAdminSetPasswordForUser(u.id),
+                                          ),
+                                          if (_isSuperAdmin)
+                                            IconButton(
+                                              tooltip: 'Perjungti admin',
+                                              icon: const Icon(Icons.admin_panel_settings_outlined),
+                                              onPressed: () => _toggleAdminForUser(u.id),
+                                            ),
+                                        ],
+                                      )),
+                                    ]),
+                                  )
+                                  .toList(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),

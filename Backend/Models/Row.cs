@@ -29,5 +29,8 @@ namespace Backend.Models
 
         [JsonIgnore]
         public ICollection<RowIrasas> Irasas { get; set; } = new List<RowIrasas>();
+
+        [JsonIgnore]
+        public ICollection<FATRow> FATRows { get; set; } = new List<FATRow>();
     }
 }

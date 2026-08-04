@@ -284,6 +284,16 @@ class Api {
     }
   }
 
+  static Future<void> deleteOrphanFiles() async {
+    final res = await _requestWithRefresh((h) => http.delete(
+          Uri.parse('$baseUrl/api/prisegtasfailas/deleteOrphans'),
+          headers: h,
+        ));
+    if (res.statusCode != 204) {
+      throw Exception('Failed to delete orphan files (${res.statusCode}): ${res.body}');
+    }
+  }
+
   // Irašai
   static Future<List<dynamic>> fetchIrasai() async {
     final res = await _requestWithRefresh(
@@ -385,6 +395,18 @@ class Api {
       );
     });
     if (res.statusCode != 201) throw Exception('Failed to create testas');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> copyTestas(int id, {String? newTestotekstas}) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      final body = jsonEncode({'newTestotekstas': newTestotekstas});
+      return http.post(Uri.parse('$baseUrl/api/testas/copy/$id'), headers: headers, body: body);
+    });
+    if (res.statusCode != 201) {
+      throw Exception('Failed to copy testas (${res.statusCode}): ${res.body}');
+    }
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
