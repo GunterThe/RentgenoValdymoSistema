@@ -83,30 +83,46 @@ namespace Backend.Controllers
                 return "Nerastas testas/įrašas ryšys (testasIrasas).";
             }
 
-            // Intra-test gating: if gate steps are configured for this TestasIrasas,
-            // all gate steps must be completed before completing any non-gate step.
-            var gateTemplateIds = await _db.TestasIrasasPrivalomiZingsniai
+            // Cross-test gating: if earlier tests in the same `Irasas` have configured
+            // mandatory (gate) steps, all those specific gate steps must be completed
+            // before completing any step in a later test.
+            var linksInIrasas = await _db.TestasIrasai
                 .AsNoTracking()
-                .Where(x => x.TestasIrasasId == currentLink.Id)
-                .Select(x => x.ZingsnisTemplateId)
-                .Distinct()
+                .Where(t => t.Irasasid == currentLink.Irasasid)
+                .Select(t => new { t.Id, t.Eile })
                 .ToListAsync();
 
-            if (gateTemplateIds.Count > 0 && !gateTemplateIds.Contains(zingsnis.ZingsnisTemplateId))
+            var previousLinkIds = linksInIrasas.Where(l => l.Eile < currentLink.Eile).Select(l => l.Id).ToList();
+
+            if (previousLinkIds.Count > 0)
             {
-                var completedGateIds = await _db.Zingsniai
+                var gateEntries = await _db.TestasIrasasPrivalomiZingsniai
                     .AsNoTracking()
-                    .Where(z => z.TestasIrasasId == currentLink.Id && z.CompletedAt != null && gateTemplateIds.Contains(z.ZingsnisTemplateId))
-                    .Select(z => z.ZingsnisTemplateId)
+                    .Where(x => previousLinkIds.Contains(x.TestasIrasasId))
+                    .Select(x => new { x.TestasIrasasId, x.ZingsnisTemplateId })
                     .Distinct()
                     .ToListAsync();
 
-                var completedSet = completedGateIds.ToHashSet();
-                foreach (var gateTplId in gateTemplateIds)
+                if (gateEntries.Count > 0)
                 {
-                    if (!completedSet.Contains(gateTplId))
+                    // Build set of required (linkId, templateId) pairs
+                    var requiredPairs = gateEntries.Select(g => (g.TestasIrasasId, g.ZingsnisTemplateId)).ToHashSet();
+
+                    var completedPairsList = await _db.Zingsniai
+                        .AsNoTracking()
+                        .Where(z => previousLinkIds.Contains(z.TestasIrasasId) && z.CompletedAt != null)
+                        .Select(z => new { z.TestasIrasasId, z.ZingsnisTemplateId })
+                        .Distinct()
+                        .ToListAsync();
+
+                    var completedPairs = completedPairsList.Select(c => (c.TestasIrasasId, c.ZingsnisTemplateId)).ToHashSet();
+
+                    foreach (var req in requiredPairs)
                     {
-                        return "Pirma užbaikite privalomus vartų žingsnius (pažymėtus kaip būtinius) ir tik tada tęskite kitus žingsnius.";
+                        if (!completedPairs.Contains(req))
+                        {
+                            return "Pirma užbaikite visus privalomus (vartų) žingsnius ankstesniuose testuose ir tik tada tęskite kitus žingsnius.";
+                        }
                     }
                 }
             }

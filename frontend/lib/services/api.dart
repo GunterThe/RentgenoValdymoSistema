@@ -258,6 +258,32 @@ class Api {
     }
   }
 
+  static Future<void> updateNaudotojas({
+    required Map<String, dynamic> payload,
+    required String id,
+  }) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(
+        Uri.parse('$baseUrl/api/Naudotojas/$id'),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+    });
+    if (res.statusCode != 204) {
+      throw Exception('Failed to update naudotojas (${res.statusCode}): ${res.body}');
+    }
+  }
+
+  static Future<void> deleteNaudotojas({required String id}) async {
+    final res = await _requestWithRefresh(
+      (h) => http.delete(Uri.parse('$baseUrl/api/Naudotojas/$id'), headers: h),
+    );
+    if (res.statusCode != 204) {
+      throw Exception('Failed to delete naudotojas (${res.statusCode}): ${res.body}');
+    }
+  }
+
   // Irašai
   static Future<List<dynamic>> fetchIrasai() async {
     final res = await _requestWithRefresh(
@@ -900,7 +926,7 @@ class Api {
         body: jsonEncode(payload),
       );
     });
-    if (res.statusCode != 204) throw Exception('Failed to update zingsnis');
+    if (res.statusCode != 204) throw Exception(res.body.isNotEmpty ? res.body : 'Failed to update zingsnis');
   }
 
   static Future<void> deleteZingsnis(int id) async {

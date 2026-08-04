@@ -16,12 +16,14 @@ class _PaskyraPageState extends State<PaskyraPage> {
   final _currentPw = TextEditingController();
   final _newPw = TextEditingController();
   final _newPw2 = TextEditingController();
+  final _searchCtrl = TextEditingController();
 
   bool _busy = false;
 
   List<Naudotojas> _users = const [];
   String? _selectedUserId;
   bool _loadingUsers = false;
+  String _search = '';
 
   bool get _isAdmin => AuthService.instance.isAdmin;
   bool get _isSuperAdmin => AuthService.instance.isSuperAdmin;
@@ -286,6 +288,248 @@ class _PaskyraPageState extends State<PaskyraPage> {
 
     pw1.dispose();
     pw2.dispose();
+  }
+
+  Future<void> _showAdminSetPasswordForUser(String userId) async {
+    if (!_isAdmin) return;
+    final pw1 = TextEditingController();
+    final pw2 = TextEditingController();
+    var busy = false;
+    StateSetter? setStateDialogRef;
+    var closing = false;
+
+    Future<void> submit(StateSetter setStateDialog) async {
+      if (userId.isEmpty) return;
+      final new1 = pw1.text;
+      final new2 = pw2.text;
+      if (new1.trim().isEmpty || new2.trim().isEmpty) {
+        _snack('Įveskite naują slaptažodį');
+        return;
+      }
+      if (new1 != new2) {
+        _snack('Nauji slaptažodžiai nesutampa');
+        return;
+      }
+      if (new1.trim().length < 6) {
+        _snack('Naujas slaptažodis turi būti bent 6 simbolių');
+        return;
+      }
+
+      setStateDialog(() => busy = true);
+      try {
+        await Api.adminSetPassword(userId: userId, newPassword: new1);
+        if (!mounted) {
+          closing = true;
+          return;
+        }
+        closing = true;
+        Navigator.of(context).pop();
+        _snack('Naudotojo slaptažodis pakeistas');
+      } catch (e) {
+        if (!mounted) {
+          closing = true;
+          return;
+        }
+        _snack('Nepavyko pakeisti naudotojo slaptažodžio: $e');
+      } finally {
+        if (!closing) setStateDialog(() => busy = false);
+      }
+    }
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keisti naudotojo slaptažodį'),
+        content: StatefulBuilder(
+          builder: (ctx, setStateDialog) {
+            setStateDialogRef = setStateDialog;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: pw1,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Naujas slaptažodis',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: pw2,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Pakartokite naują slaptažodį',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Atšaukti'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final s = setStateDialogRef;
+              if (s == null) return;
+              submit(s);
+            },
+            child: const Text('Pakeisti'),
+          ),
+        ],
+      ),
+    );
+
+    pw1.dispose();
+    pw2.dispose();
+  }
+
+  Future<void> _confirmDeleteUser(String userId, String label) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Trinti naudotoją'),
+        content: Text('Ar tikrai norite ištrinti naudotoją "$label"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Atšaukti')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Trinti')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await Api.deleteNaudotojas(id: userId);
+      _snack('Naudotojas ištrintas');
+      await _loadUsers();
+    } catch (e) {
+      _snack('Nepavyko ištrinti naudotojo: $e');
+    }
+  }
+
+  Future<void> _toggleAdminForUser(String userId) async {
+    if (!_isSuperAdmin) {
+      _snack('Reikia superadministratoriaus teisių');
+      return;
+    }
+    try {
+      await Api.superAdminToggleAdmin(userId: userId);
+      _snack('Teisės atnaujintos');
+      await _loadUsers();
+    } catch (e) {
+      _snack('Nepavyko atnaujinti teisių: $e');
+    }
+  }
+
+  Future<void> _showEditUserDialog(Naudotojas user) async {
+    if (!_isAdmin) return;
+    final vardasCtrl = TextEditingController(text: user.vardas);
+    final pavardeCtrl = TextEditingController(text: user.pavarde);
+    DateTime? gimimo;
+    var adminas = user.adminas == true;
+    var busy = false;
+    StateSetter? setStateDialogRef;
+    var closing = false;
+
+    Future<void> submit(StateSetter setStateDialog) async {
+      final vardas = vardasCtrl.text.trim();
+      final pavarde = pavardeCtrl.text.trim();
+      if (vardas.isEmpty || pavarde.isEmpty) {
+        _snack('Įveskite vardą ir pavardę');
+        return;
+      }
+      setStateDialog(() => busy = true);
+      try {
+        final payload = {
+          'id': user.id,
+          'vardas': vardas,
+          'pavarde': pavarde,
+          'gimimoData': (gimimo ?? DateTime(1990, 1, 1)).toIso8601String(),
+          'adminas': adminas,
+          // preserve known fields where possible
+          'passwordHash': '',
+          'prisijungimoId': user.prisijungimoId ?? '',
+          'superAdminas': false,
+          'mustChangePassword': false,
+          'refreshToken': [],
+          'zinutes': [],
+        };
+
+        await Api.updateNaudotojas(payload: payload, id: user.id);
+        if (!mounted) {
+          closing = true;
+          return;
+        }
+        closing = true;
+        Navigator.of(context).pop();
+        _snack('Naudotojas atnaujintas');
+        await _loadUsers();
+      } catch (e) {
+        if (!mounted) {
+          closing = true;
+          return;
+        }
+        _snack('Nepavyko atnaujinti naudotojo: $e');
+      } finally {
+        if (!closing) setStateDialog(() => busy = false);
+      }
+    }
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Redaguoti naudotoją'),
+        content: StatefulBuilder(
+          builder: (ctx, setStateDialog) {
+            setStateDialogRef = setStateDialog;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: vardasCtrl,
+                  decoration: const InputDecoration(labelText: 'Vardas', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: pavardeCtrl,
+                  decoration: const InputDecoration(labelText: 'Pavardė', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                if (_isSuperAdmin) ...[
+                  SwitchListTile(
+                    value: adminas,
+                    onChanged: busy ? null : (v) => setStateDialog(() => adminas = v),
+                    title: const Text('Administratorius'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Atšaukti')),
+          FilledButton(
+            onPressed: busy
+                ? null
+                : () {
+                    final s = setStateDialogRef;
+                    if (s == null) return;
+                    submit(s);
+                  },
+            child: Text(busy ? 'Vykdoma...' : 'Išsaugoti'),
+          ),
+        ],
+      ),
+    );
+
+    vardasCtrl.dispose();
+    pavardeCtrl.dispose();
   }
 
   Future<void> _showSuperAdminToggleAdminDialog() async {
@@ -737,48 +981,100 @@ class _PaskyraPageState extends State<PaskyraPage> {
             if (_isAdmin) ...[
               const SizedBox(height: 12),
               Card(
-                child: ExpansionTile(
-                  title: const Text(
-                    'Administravimas',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Naudotojai',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _loadingUsers ? null : _loadUsers,
+                            icon: const Icon(Icons.refresh),
+                            tooltip: 'Atnaujinti',
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton.icon(
+                            onPressed: _loadingUsers ? null : _showAdminCreateUserDialog,
+                            icon: const Icon(Icons.person_add_alt_1_outlined),
+                            label: const Text('Sukurti'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _searchCtrl,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search),
+                          labelText: 'Paieška',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (v) => setState(() => _search = v.trim().toLowerCase()),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_loadingUsers) const LinearProgressIndicator(),
+                      const SizedBox(height: 8),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columns: const [
+                            DataColumn(label: Text('Vardas')),
+                            DataColumn(label: Text('Prisijungimo ID')),
+                            DataColumn(label: Text('Taisyklės')),
+                            DataColumn(label: Text('Veiksmai')),
+                          ],
+                          rows: _users
+                              .where((u) {
+                                if (_search.isEmpty) return true;
+                                final s = _search;
+                                final name = u.fullName.toLowerCase();
+                                final pid = (u.prisijungimoId ?? '').toLowerCase();
+                                return name.contains(s) || pid.contains(s);
+                              })
+                              .map(
+                                (u) => DataRow(cells: [
+                                  DataCell(Text(u.fullName)),
+                                  DataCell(Text(u.prisijungimoId ?? '')),
+                                  DataCell(Text(u.adminas == true ? 'Administratorius' : 'Naudotojas')),
+                                  DataCell(Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        tooltip: 'Redaguoti',
+                                        icon: const Icon(Icons.edit),
+                                        onPressed: () => _showEditUserDialog(u),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Ištrinti',
+                                        icon: const Icon(Icons.delete_outline),
+                                        onPressed: () => _confirmDeleteUser(u.id, u.displayLabel),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Atstatyti slaptažodį',
+                                        icon: const Icon(Icons.lock_reset),
+                                        onPressed: () => _showAdminSetPasswordForUser(u.id),
+                                      ),
+                                      if (_isSuperAdmin)
+                                        IconButton(
+                                          tooltip: 'Perjungti admin',
+                                          icon: const Icon(Icons.admin_panel_settings_outlined),
+                                          onPressed: () => _toggleAdminForUser(u.id),
+                                        ),
+                                    ],
+                                  )),
+                                ]),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                    ],
                   ),
-                  subtitle: const Text('Naudotojai ir slaptažodžiai'),
-                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  children: [
-                    if (_loadingUsers)
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 10),
-                        child: LinearProgressIndicator(),
-                      ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.lock_reset),
-                      title: const Text('Keisti naudotojo slaptažodį'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () async {
-                        await _showAdminSetPasswordDialog();
-                      },
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.person_add_alt_1_outlined),
-                      title: const Text('Sukurti naują naudotoją'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () async {
-                        await _showAdminCreateUserDialog();
-                      },
-                    ),
-                    const SizedBox(height: 6),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: _loadingUsers ? null : _loadUsers,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Atnaujinti naudotojų sąrašą'),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],
