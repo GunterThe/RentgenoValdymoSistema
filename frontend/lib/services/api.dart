@@ -406,6 +406,22 @@ class Api {
     return jsonDecode(res.body) as List<dynamic>;
   }
 
+  static Future<List<dynamic>> fetchColumnValues() async {
+    final res = await _requestWithRefresh((h) =>
+        http.get(Uri.parse('$baseUrl/api/ColumnValue'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load column values');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> fetchColumnValueByEverything(int rowIrasasId, int columnTemplateId) async {
+    final res = await _requestWithRefresh((h) => http.get(
+          Uri.parse('$baseUrl/api/ColumnValue/getByEverything/$rowIrasasId/$columnTemplateId'),
+          headers: h,
+        ));
+    if (res.statusCode != 200) throw Exception('Failed to load column value (${res.statusCode})');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   static Future<Map<String, dynamic>> createFAT({required String title}) async {
     final res = await _requestWithRefresh((h) {
       final headers = {...h, 'Content-Type': 'application/json'};
@@ -435,7 +451,8 @@ class Api {
   }
 
   // Attach a FAT template to an Irasas (creates RowIrasas entries)
-  static Future<void> attachFATTemplateToIrasas(int irasasId, int templateId) async {
+  static Future<void> attachFATTemplateToIrasas(int irasasId, int? templateId) async {
+    if (templateId == null) throw Exception('Template ID is required to attach FAT template to Irasas');
     final res = await _requestWithRefresh((h) {
       // Explicitly send an empty string body to avoid accidental JSON payloads in web PUT requests
       final headers = Map<String, String>.from(h);
