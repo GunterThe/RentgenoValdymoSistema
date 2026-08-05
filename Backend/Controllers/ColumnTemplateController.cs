@@ -64,6 +64,7 @@ namespace Backend.Controllers
 
                 existing.Description = template.Description;
                 existing.IsArray = template.IsArray;
+                existing.ArrayLength = template.ArrayLength;
 
                 var siblings = await _db.ColumnTemplates
                     .Where(z => z.RowId == oldRowId && z.Id != existing.Id)

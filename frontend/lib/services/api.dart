@@ -398,6 +398,173 @@ class Api {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  // FAT
+  static Future<List<dynamic>> fetchFATs() async {
+    final res = await _requestWithRefresh((h) =>
+        http.get(Uri.parse('$baseUrl/api/FAT'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load FATs');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createFAT({required String title}) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(
+        Uri.parse('$baseUrl/api/FAT'),
+        headers: headers,
+        body: jsonEncode({'title': title}),
+      );
+    });
+    if (res.statusCode != 201) {
+      throw Exception('Failed to create FAT (${res.statusCode}): ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateFAT(int id, Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(Uri.parse('$baseUrl/api/FAT/$id'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update FAT (${res.statusCode}): ${res.body}');
+  }
+
+  static Future<void> deleteFAT(int id) async {
+    final res = await _requestWithRefresh((h) => http.delete(Uri.parse('$baseUrl/api/FAT/$id'), headers: h));
+    if (res.statusCode != 204) throw Exception('Failed to delete FAT (${res.statusCode}): ${res.body}');
+  }
+
+  // Attach a FAT template to an Irasas (creates RowIrasas entries)
+  static Future<void> attachFATTemplateToIrasas(int irasasId, int templateId) async {
+    final res = await _requestWithRefresh((h) {
+      // Explicitly send an empty string body to avoid accidental JSON payloads in web PUT requests
+      final headers = Map<String, String>.from(h);
+      return http.put(
+        Uri.parse('$baseUrl/api/irasas/$irasasId/FATTemplate/$templateId'),
+        headers: headers,
+        body: '',
+      );
+    });
+    if (res.statusCode != 204) throw Exception('Failed to attach FAT template (${res.statusCode}): ${res.body}');
+  }
+
+  static Future<List<dynamic>> fetchRowIrasai() async {
+    final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/RowIrasas'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load row irasai');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  // Rows
+  static Future<List<dynamic>> fetchRows() async {
+    final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/row'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load rows');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createRow(Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(Uri.parse('$baseUrl/api/row'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create row (${res.statusCode}): ${res.body}');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateRow(int id, Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(Uri.parse('$baseUrl/api/row/$id'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update row (${res.statusCode}): ${res.body}');
+  }
+
+  // FATRow (link rows to FAT)
+  static Future<List<dynamic>> fetchFATRows() async {
+    final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/FATRow'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load FAT rows');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createFATRow(Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(Uri.parse('$baseUrl/api/FATRow'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create FATRow (${res.statusCode}): ${res.body}');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateFATRowOrder(int fatId, int rowId, Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(Uri.parse('$baseUrl/api/FATRow/$fatId/$rowId'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update FATRow (${res.statusCode}): ${res.body}');
+  }
+
+  static Future<void> deleteFATRow(int fatId, int rowId) async {
+    final res = await _requestWithRefresh((h) => http.delete(Uri.parse('$baseUrl/api/FATRow/$fatId/$rowId'), headers: h));
+    if (res.statusCode != 204) throw Exception('Failed to delete FATRow (${res.statusCode}): ${res.body}');
+  }
+
+  // Header
+  static Future<List<dynamic>> fetchHeaders() async {
+    final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/Header'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load headers');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createHeader(String text) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(Uri.parse('$baseUrl/api/Header'), headers: headers, body: jsonEncode({'text': text}));
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create header (${res.statusCode}): ${res.body}');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateHeader(int id, String text) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(Uri.parse('$baseUrl/api/Header/$id'), headers: headers, body: jsonEncode({'id': id, 'text': text}));
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update header (${res.statusCode}): ${res.body}');
+  }
+
+  static Future<void> deleteHeader(int id) async {
+    final res = await _requestWithRefresh((h) => http.delete(Uri.parse('$baseUrl/api/Header/$id'), headers: h));
+    if (res.statusCode != 204) throw Exception('Failed to delete header (${res.statusCode}): ${res.body}');
+  }
+
+  // ColumnTemplate
+  static Future<List<dynamic>> fetchColumnTemplates() async {
+    final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/ColumnTemplate'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load column templates');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createColumnTemplate(Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(Uri.parse('$baseUrl/api/ColumnTemplate'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create column template (${res.statusCode}): ${res.body}');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateColumnTemplate(int id, Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(Uri.parse('$baseUrl/api/ColumnTemplate/$id'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update column template (${res.statusCode}): ${res.body}');
+  }
+
+  static Future<void> deleteColumnTemplate(int id) async {
+    final res = await _requestWithRefresh((h) => http.delete(Uri.parse('$baseUrl/api/ColumnTemplate/$id'), headers: h));
+    if (res.statusCode != 204) throw Exception('Failed to delete column template (${res.statusCode}): ${res.body}');
+  }
+
   static Future<Map<String, dynamic>> copyTestas(int id, {String? newTestotekstas}) async {
     final res = await _requestWithRefresh((h) {
       final headers = {...h, 'Content-Type': 'application/json'};

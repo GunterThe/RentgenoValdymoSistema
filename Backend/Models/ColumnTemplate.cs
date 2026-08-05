@@ -25,10 +25,12 @@ namespace Backend.Models
         public int Order { get; set; }
 
         [Column("header_id")]
-        public int HeaderId { get; set; }
+        public int? HeaderId { get; set; }
         
         [Column("is_array")]
         public bool IsArray { get; set; } = false;
+        [Column("array_length")]
+        public int ArrayLength { get; set; } = 0;
 
         [JsonIgnore]
         public Row? Row { get; set; }

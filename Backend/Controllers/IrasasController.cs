@@ -213,5 +213,29 @@ namespace Backend.Controllers
             await _db.SaveChangesAsync();
             return NoContent();
         }
+
+        [HttpPut("{irasasId}/FATTemplate/{templateId}")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<IActionResult> UpdateFATTemplate(int irasasId, int templateId)
+        {
+            if (irasasId <= 0 || templateId <= 0) return BadRequest();
+            var rows = _db.FATRows.Where(r => r.Fatid == templateId).OrderBy(r => r.Order).Select(r => r.Rowid).ToList();
+            if (rows.Count == 0) return NotFound();
+            int order = 1;
+
+            foreach (var rowId in rows)
+            {
+                var RowIrasas = new RowIrasas
+                {
+                    RowId = rowId,
+                    IrasasId = irasasId,
+                    Order = order++
+                };
+                _db.RowIrasai.Add(RowIrasas);
+            }
+            await _db.SaveChangesAsync();
+
+            return NoContent();
+        }
     }
 }

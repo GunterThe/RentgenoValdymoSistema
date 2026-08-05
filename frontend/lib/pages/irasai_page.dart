@@ -8,6 +8,7 @@ import '../models/testas_irasas.dart';
 import '../models/zingsnis.dart';
 import '../models/zingsnis_template.dart';
 import 'irasas_zingsniai_page.dart';
+import 'irasas_column_page.dart';
 import '../widgets/app_scaffold.dart';
 
 class IrasaiPage extends StatefulWidget {
@@ -209,8 +210,8 @@ class _IrasaiPageState extends State<IrasaiPage> {
 
     final lokId = _lokacijaFilterId;
     final filteredByLokacija = lokId == null
-      ? filtered
-      : filtered.where((e) => e.lokacijaId == lokId).toList();
+        ? filtered
+        : filtered.where((e) => e.lokacijaId == lokId).toList();
 
     final col = _sortColumnIndex;
     if (col == null) return filteredByLokacija;
@@ -419,10 +420,8 @@ class _IrasaiPageState extends State<IrasaiPage> {
     // kurie turi būti atlikti prieš leidžiant užbaigti kitus žingsnius.
     final vartaiByTestasId = <int, Set<int>>{};
 
-    int vartaiCount() => vartaiByTestasId.values.fold<int>(
-      0,
-      (sum, set) => sum + set.length,
-    );
+    int vartaiCount() =>
+        vartaiByTestasId.values.fold<int>(0, (sum, set) => sum + set.length);
 
     Future<void> pickVartaiForSablonas() async {
       if (sablonasId == null) return;
@@ -459,9 +458,10 @@ class _IrasaiPageState extends State<IrasaiPage> {
           final e = (raw['eile'] ?? raw['Eile']);
 
           if (sid is int && tid is int && sid == sablonasId) {
-            sablonasTestai.add(
-              (testasId: tid, eile: (e is int && e > 0) ? e : 1 << 30),
-            );
+            sablonasTestai.add((
+              testasId: tid,
+              eile: (e is int && e > 0) ? e : 1 << 30,
+            ));
           }
         }
         sablonasTestai.sort((a, b) {
@@ -494,7 +494,8 @@ class _IrasaiPageState extends State<IrasaiPage> {
                     itemBuilder: (dialogCtx, index) {
                       final testasId = sablonasTestai[index].testasId;
                       final testName =
-                          testById[testasId]?.testotekstas ?? 'Testas #$testasId';
+                          testById[testasId]?.testotekstas ??
+                          'Testas #$testasId';
                       final tpls =
                           templatesByTest[testasId] ??
                           const <ZingsnisTemplate>[];
@@ -516,9 +517,9 @@ class _IrasaiPageState extends State<IrasaiPage> {
                               child: Text(
                                 'Šis testas neturi žingsnių šablonų',
                                 style: TextStyle(
-                                  color: Theme.of(dialogCtx)
-                                      .colorScheme
-                                      .onSurfaceVariant,
+                                  color: Theme.of(
+                                    dialogCtx,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             )
@@ -559,9 +560,9 @@ class _IrasaiPageState extends State<IrasaiPage> {
         );
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Klaida kraunant vartus: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Klaida kraunant vartus: $e')));
       }
     }
 
@@ -622,8 +623,9 @@ class _IrasaiPageState extends State<IrasaiPage> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(
-                  onPressed:
-                      sablonasId == null ? null : () => pickVartaiForSablonas(),
+                  onPressed: sablonasId == null
+                      ? null
+                      : () => pickVartaiForSablonas(),
                   icon: const Icon(Icons.lock_outline),
                   label: Text(
                     vartaiCount() == 0
@@ -1058,12 +1060,11 @@ class _IrasaiPageState extends State<IrasaiPage> {
                           value: null,
                           child: Text('Visos'),
                         ),
-                        ...(_lokacijaNameById.entries.toList()
-                              ..sort(
-                                (a, b) => a.value
-                                    .toLowerCase()
-                                    .compareTo(b.value.toLowerCase()),
-                              ))
+                        ...(_lokacijaNameById.entries.toList()..sort(
+                              (a, b) => a.value.toLowerCase().compareTo(
+                                b.value.toLowerCase(),
+                              ),
+                            ))
                             .map(
                               (e) => DropdownMenuItem<int?>(
                                 value: e.key,
@@ -1101,8 +1102,12 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                             const SizedBox(height: 8),
                                         itemBuilder: (ctx, index) {
                                           final it = shown[index];
-                                          final status = _prettyStatus(it.statusas);
-                                          final lok = _lokacijaName(it.lokacijaId);
+                                          final status = _prettyStatus(
+                                            it.statusas,
+                                          );
+                                          final lok = _lokacijaName(
+                                            it.lokacijaId,
+                                          );
                                           final pr = _fmtDate(it.pradzia);
                                           final pb = _fmtDate(it.pabaiga);
 
@@ -1133,43 +1138,66 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                                   Text(
                                                     'Dokumento ID: ${it.idDokumento}',
                                                     style: TextStyle(
-                                                      color: cs.onSurfaceVariant,
+                                                      color:
+                                                          cs.onSurfaceVariant,
                                                     ),
                                                   ),
                                                   Text(
                                                     'Lokacija: $lok',
                                                     style: TextStyle(
-                                                      color: cs.onSurfaceVariant,
+                                                      color:
+                                                          cs.onSurfaceVariant,
                                                     ),
                                                   ),
                                                   Text(
                                                     'Statusas: $status',
                                                     style: TextStyle(
-                                                      color: cs.onSurfaceVariant,
+                                                      color:
+                                                          cs.onSurfaceVariant,
                                                     ),
                                                   ),
                                                   Text(
                                                     'Laikas: $pr – $pb',
                                                     style: TextStyle(
-                                                      color: cs.onSurfaceVariant,
+                                                      color:
+                                                          cs.onSurfaceVariant,
                                                     ),
                                                   ),
                                                   const SizedBox(height: 8),
                                                   Wrap(
-                                                    alignment: WrapAlignment.end,
+                                                    alignment:
+                                                        WrapAlignment.end,
                                                     children: [
                                                       IconButton(
-                                                        tooltip: 'Peržiūrėti',
-                                                        onPressed: () =>
-                                                            Navigator.of(context)
-                                                                .push(
+                                                        tooltip: 'Peržiūėti FAT',
+                                                        onPressed: () => Navigator.of(
+                                                          context,
+                                                        ).push(
                                                           MaterialPageRoute(
                                                             builder: (_) =>
-                                                                IrasasZingsniaiPage(
+                                                                IrasasColumnPage(
                                                               irasas: it,
                                                             ),
                                                           ),
                                                         ),
+                                                        icon: const Icon(
+                                                          Icons.view_column,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        tooltip: 'Peržiūrėti',
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                              context,
+                                                            ).push(
+                                                              MaterialPageRoute(
+                                                                builder: (_) =>
+                                                                    IrasasZingsniaiPage(
+                                                                      irasas:
+                                                                          it,
+                                                                    ),
+                                                              ),
+                                                            ),
                                                         icon: const Icon(
                                                           Icons
                                                               .remove_red_eye_outlined,
@@ -1187,7 +1215,9 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                                         tooltip:
                                                             'Pridėti testą',
                                                         onPressed: () =>
-                                                            _addTestToIrasas(it),
+                                                            _addTestToIrasas(
+                                                              it,
+                                                            ),
                                                         icon: const Icon(
                                                           Icons.playlist_add,
                                                         ),
@@ -1200,8 +1230,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                                               it,
                                                             ),
                                                         icon: const Icon(
-                                                          Icons
-                                                              .playlist_remove,
+                                                          Icons.playlist_remove,
                                                         ),
                                                       ),
                                                       IconButton(
@@ -1281,29 +1310,56 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                                 DataCell(Text(it.pavadinimas)),
                                                 DataCell(Text(it.idDokumento)),
                                                 DataCell(
-                                                  Text(_lokacijaName(it.lokacijaId)),
+                                                  Text(
+                                                    _lokacijaName(
+                                                      it.lokacijaId,
+                                                    ),
+                                                  ),
                                                 ),
                                                 DataCell(
-                                                  Text(_prettyStatus(it.statusas)),
+                                                  Text(
+                                                    _prettyStatus(it.statusas),
+                                                  ),
                                                 ),
-                                                DataCell(Text(_fmtDate(it.pradzia))),
-                                                DataCell(Text(_fmtDate(it.pabaiga))),
+                                                DataCell(
+                                                  Text(_fmtDate(it.pradzia)),
+                                                ),
+                                                DataCell(
+                                                  Text(_fmtDate(it.pabaiga)),
+                                                ),
                                                 DataCell(
                                                   Row(
                                                     children: [
                                                       IconButton(
+                                                        tooltip: 'Peržiūėti FAT',
+                                                        onPressed: () => Navigator.of(
+                                                          context,
+                                                        ).push(
+                                                          MaterialPageRoute(
+                                                            builder: (_) =>
+                                                                IrasasColumnPage(
+                                                              irasas: it,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        icon: const Icon(
+                                                          Icons.view_column,
+                                                        ),
+                                                      ),
+                                                      IconButton(
                                                         tooltip: 'Peržiūrėti',
                                                         onPressed: () =>
-                                                              Navigator.of(
-                                                                context,
-                                                              ).push(
-                                                                MaterialPageRoute(
-                                                                  builder: (_) =>
-                                                                      IrasasZingsniaiPage(
-                                                                    irasas: it,
-                                                                  ),
-                                                                ),
+                                                            Navigator.of(
+                                                              context,
+                                                            ).push(
+                                                              MaterialPageRoute(
+                                                                builder: (_) =>
+                                                                    IrasasZingsniaiPage(
+                                                                      irasas:
+                                                                          it,
+                                                                    ),
                                                               ),
+                                                            ),
                                                         icon: const Icon(
                                                           Icons
                                                               .remove_red_eye_outlined,
@@ -1321,7 +1377,9 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                                         tooltip:
                                                             'Pridėti testą',
                                                         onPressed: () =>
-                                                            _addTestToIrasas(it),
+                                                            _addTestToIrasas(
+                                                              it,
+                                                            ),
                                                         icon: const Icon(
                                                           Icons.playlist_add,
                                                         ),
@@ -1334,8 +1392,7 @@ class _IrasaiPageState extends State<IrasaiPage> {
                                                               it,
                                                             ),
                                                         icon: const Icon(
-                                                          Icons
-                                                              .playlist_remove,
+                                                          Icons.playlist_remove,
                                                         ),
                                                       ),
                                                       IconButton(

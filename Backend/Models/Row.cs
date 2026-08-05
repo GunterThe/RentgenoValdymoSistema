@@ -20,13 +20,6 @@ namespace Backend.Models
         [Column("control_methods")]
         public string? ControlMethods { get; set; }
 
-        [Column("row_value_id")]
-        public int RowValueId { get; set; }
-
-        [JsonIgnore]
-        [ForeignKey(nameof(RowValueId))]
-        public RowValue? RowValue { get; set; }
-
         [JsonIgnore]
         public ICollection<RowIrasas> Irasas { get; set; } = new List<RowIrasas>();
 
