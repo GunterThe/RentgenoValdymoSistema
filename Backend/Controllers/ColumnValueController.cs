@@ -71,7 +71,8 @@ namespace Backend.Controllers
                     return BadRequest("Single value is required for this column template.");
                 }
             }
-
+            
+            columnValue.CompletedAt = EnsureUtc(DateTime.Now);
             _db.ColumnValues.Add(columnValue);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(Get), new { id = columnValue.Id }, columnValue);

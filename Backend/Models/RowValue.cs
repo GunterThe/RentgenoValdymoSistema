@@ -20,7 +20,7 @@ namespace Backend.Models
         public DateTime? CompletedAt { get; set; }
 
         [Column("completed_by_user_id")]
-        public Guid CompletedByUserId { get; set; }
+        public Guid? CompletedByUserId { get; set; }
 
         [Column("row_id")]
         public int RowId { get; set; }

@@ -40,7 +40,6 @@ namespace Backend.Controllers
         }
 
         [HttpPost]
-        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<RowValue>> Create(RowValue rowValue)
         {
             // default to 'empty' when not provided
@@ -57,7 +56,6 @@ namespace Backend.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Update(int id, RowValue rowValue)
         {
             if (id != rowValue.Id) return BadRequest();
@@ -74,14 +72,27 @@ namespace Backend.Controllers
             }
 
             bool isAdmin = User.HasClaim("admin", bool.TrueString);
-            if (!isAdmin)
-                return Forbid();
+            if (existing.Value != "empty" && !isAdmin)
+            {
+                return Forbid("Only admins can update a non-empty value.");
+            }
 
-            existing.Value = rowValue.Value;
-            existing.CompletedAt = rowValue.CompletedAt.HasValue ? EnsureUtc(rowValue.CompletedAt.Value) : (DateTime?)null;
-            existing.CompletedByUserId = rowValue.CompletedByUserId;
-            existing.RowId = rowValue.RowId;
-            existing.RowIrasasId = rowValue.RowIrasasId;
+            if (rowValue.Value == "empty" && isAdmin)
+            {
+                existing.Value = rowValue.Value;
+                existing.CompletedAt = null;
+                existing.CompletedByUserId = null;
+                existing.RowId = rowValue.RowId;
+                existing.RowIrasasId = rowValue.RowIrasasId;
+            }
+            else
+            {
+                existing.Value = rowValue.Value;
+                existing.CompletedAt = rowValue.CompletedAt.HasValue ? EnsureUtc(rowValue.CompletedAt.Value) : (DateTime?)null;
+                existing.CompletedByUserId = rowValue.CompletedByUserId;
+                existing.RowId = rowValue.RowId;
+                existing.RowIrasasId = rowValue.RowIrasasId;
+            }
 
             try
             {

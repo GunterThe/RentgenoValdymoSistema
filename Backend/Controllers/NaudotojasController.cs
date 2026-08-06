@@ -89,7 +89,6 @@ namespace Backend.Controllers
         }
 
         [HttpGet]
-        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<IEnumerable<NaudotojasListItem>>> GetAll()
         {
             var list = await _db.Naudotojai
