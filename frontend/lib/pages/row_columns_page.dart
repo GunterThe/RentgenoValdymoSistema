@@ -15,6 +15,8 @@ class RowColumnsPage extends StatefulWidget {
 class _RowColumnsPageState extends State<RowColumnsPage> {
   List<Map<String, dynamic>> _headers = [];
   List<Map<String, dynamic>> _templates = [];
+  List<Map<String, dynamic>> _columnValues = [];
+  Map<String, String> _userNameById = {};
   bool _loading = true;
 
   int? _parseInt(dynamic v) {
@@ -40,10 +42,28 @@ class _RowColumnsPageState extends State<RowColumnsPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final headers = await Api.fetchHeaders();
-      final templates = await Api.fetchColumnTemplates();
-      _headers = (headers).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      final results = await Future.wait([Api.fetchHeaders(), Api.fetchColumnTemplates(), Api.fetchColumnValues(), Api.fetchNaudotojai()]);
+      final headers = results[0];
+      final templates = results[1];
+      final columnValues = results[2];
+      final naudotojai = results[3];
+      final mappedHeaders = (headers).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      int? getHeaderRowId(Map<String, dynamic> h) {
+        final v = h['rowId'] ?? h['row_id'] ?? h['RowId'];
+        if (v == null) return null;
+        return v is int ? v : int.tryParse(v.toString());
+      }
+      // include headers that belong to this row or have no rowId (legacy/global)
+      _headers = mappedHeaders.where((h) {
+        final rid = getHeaderRowId(h);
+        return rid == null || rid == widget.rowId;
+      }).toList();
       final mapped = (templates).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      _columnValues = (columnValues).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      _userNameById = {
+        for (final u in (naudotojai).map((e) => Map<String, dynamic>.from(e as Map)))
+          (u['id'] ?? u['Id']).toString(): ((u['vardas'] ?? u['Vardas'] ?? '') as String) + ' ' + ((u['pavarde'] ?? u['Pavarde'] ?? '') as String)
+      };
       int? getRowId(Map<String, dynamic> t) {
         final v = t['rowId'] ?? t['row_id'] ?? t['RowId'];
         if (v == null) return null;
@@ -56,6 +76,27 @@ class _RowColumnsPageState extends State<RowColumnsPage> {
     } finally {
       setState(() => _loading = false);
     }
+  }
+
+  Map<String, String>? _latestCompletionForTemplate(int? templateId) {
+    if (templateId == null) return null;
+    final candidates = _columnValues.where((v) {
+      final tid = _parseInt(v['column_template_id'] ?? v['columnTemplateId'] ?? v['ColumnTemplateId']);
+      final completed = v['completed_at'] ?? v['completedAt'] ?? v['CompletedAt'];
+      return tid == templateId && completed != null;
+    }).toList();
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) {
+      final da = DateTime.tryParse((a['completed_at'] ?? a['completedAt'] ?? a['CompletedAt']).toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final db = DateTime.tryParse((b['completed_at'] ?? b['completedAt'] ?? b['CompletedAt']).toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return da.compareTo(db);
+    });
+    final last = candidates.last;
+    final dt = DateTime.tryParse((last['completed_at'] ?? last['completedAt'] ?? last['CompletedAt']).toString())?.toLocal();
+    final dateStr = dt == null ? '' : '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final uid = (last['completed_by_user_id'] ?? last['completedByUserId'] ?? last['CompletedByUserId'])?.toString();
+    final uname = uid == null ? '' : (_userNameById[uid] ?? uid);
+    return {'dateStr': dateStr, 'user': uname};
   }
 
   Future<void> _createHeader() async {
@@ -73,7 +114,7 @@ class _RowColumnsPageState extends State<RowColumnsPage> {
     );
     if (ok != true) return;
     try {
-      await Api.createHeader(ctrl.text.trim());
+      await Api.createHeader(ctrl.text.trim(), rowId: widget.rowId);
       await _load();
     } catch (e) {
       if (!mounted) return;
@@ -97,7 +138,8 @@ class _RowColumnsPageState extends State<RowColumnsPage> {
     if (ok != true) return;
     try {
       final id = _parseInt(header['id']) ?? 0;
-      await Api.updateHeader(id, ctrl.text.trim());
+      final hid = _parseInt(header['row_id'] ?? header['rowId']);
+      await Api.updateHeader(id, ctrl.text.trim(), rowId: hid);
       await _load();
     } catch (e) {
       if (!mounted) return;
@@ -143,9 +185,12 @@ class _RowColumnsPageState extends State<RowColumnsPage> {
             children: [
               TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Aprašymas')),
               const SizedBox(height: 8),
-              DropdownButtonFormField<int>(
+              DropdownButtonFormField<int?>(
                 initialValue: selectedHeader,
-                items: _headers.map((h) => DropdownMenuItem<int>(value: _parseInt(h['id']) ?? 0, child: Text((h['text'] ?? '') as String))).toList(),
+                items: [
+                  DropdownMenuItem<int?>(value: null, child: Text('Be antraštės')),
+                  ..._headers.map((h) => DropdownMenuItem<int?>(value: _parseInt(h['id']), child: Text((h['text'] ?? '') as String))),
+                ],
                 onChanged: (v) => setState(() => selectedHeader = v),
                 decoration: const InputDecoration(labelText: 'Antraštė'),
               ),
@@ -198,7 +243,8 @@ class _RowColumnsPageState extends State<RowColumnsPage> {
         'isArray': isArray,
         'order': existing == null ? 0 : (_parseInt(existing['order']) ?? 0),
       };
-      if (selectedHeader != null) payload['headerId'] = selectedHeader;
+      // always include headerId in payload so clearing the header is applied (null -> detach)
+      payload['headerId'] = selectedHeader;
       if (isArray) {
         final parsed = int.tryParse(arrayCtrl.text) ?? arrayCount;
         payload['arrayLength'] = parsed; // backend expects ArrayLength
@@ -296,9 +342,12 @@ class _RowColumnsPageState extends State<RowColumnsPage> {
                                         Container(
                                           margin: const EdgeInsets.symmetric(vertical: 6),
                                           decoration: BoxDecoration(
-                                            border: Border.all(color: Theme.of(context).colorScheme.outline),
+                                            border: Border.all(color: Theme.of(context).colorScheme.outline, width: 1.2),
                                             borderRadius: BorderRadius.circular(8),
                                             color: Theme.of(context).colorScheme.surface,
+                                            boxShadow: [
+                                              BoxShadow(color: Theme.of(context).shadowColor.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
+                                            ],
                                           ),
                                           child: ExpansionTile(
                                             tilePadding: const EdgeInsets.symmetric(horizontal: 12),
@@ -348,20 +397,31 @@ class _RowColumnsPageState extends State<RowColumnsPage> {
                                                 },
                                                 children: templatesForHeader.map((t) {
                                                   final key = ValueKey('tpl_${_parseInt(t['id']) ?? UniqueKey()}');
-                                                  final isArray = _readBool(t['is_array'] ?? t['isArray']);
-                                                  return ListTile(
-                                                    key: key,
-                                                    contentPadding: const EdgeInsets.only(left: 24, right: 16),
-                                                    title: Text((t['description'] ?? '') as String),
-                                                    subtitle: Text('${isArray ? 'Masyvas' : 'Vienas skaičius'} • Eilės nr ${t['order'] ?? ''}'),
-                                                    trailing: Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        IconButton(onPressed: () => _createTemplate(existing: t), icon: const Icon(Icons.edit)),
-                                                        IconButton(onPressed: () => _deleteTemplate(_parseInt(t['id']) ?? 0), icon: const Icon(Icons.delete_outline)),
-                                                      ],
-                                                    ),
-                                                  );
+                                                    final isArray = _readBool(t['is_array'] ?? t['isArray']);
+                                                    final completion = _latestCompletionForTemplate(_parseInt(t['id']));
+                                                    final completionText = completion == null
+                                                        ? 'Neužpildyta'
+                                                        : 'Pabaigtas: ${completion['dateStr']} • ${completion['user']}';
+                                                    return ListTile(
+                                                      key: key,
+                                                      contentPadding: const EdgeInsets.only(left: 24, right: 16),
+                                                      title: Text((t['description'] ?? '') as String),
+                                                      subtitle: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text('${isArray ? 'Masyvas' : 'Vienas skaičius'} • Eilės nr ${t['order'] ?? ''}'),
+                                                          const SizedBox(height: 4),
+                                                          Text(completionText, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+                                                        ],
+                                                      ),
+                                                      trailing: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          IconButton(onPressed: () => _createTemplate(existing: t), icon: const Icon(Icons.edit)),
+                                                          IconButton(onPressed: () => _deleteTemplate(_parseInt(t['id']) ?? 0), icon: const Icon(Icons.delete_outline)),
+                                                        ],
+                                                      ),
+                                                    );
                                                 }).toList(),
                                               ),
                                             )
@@ -419,11 +479,22 @@ class _RowColumnsPageState extends State<RowColumnsPage> {
                                               children: headerless.map((t) {
                                                 final key = ValueKey('tpl_${_parseInt(t['id']) ?? UniqueKey()}');
                                                 final isArray = _readBool(t['is_array'] ?? t['isArray']);
+                                                final completion = _latestCompletionForTemplate(_parseInt(t['id']));
+                                                final completionText = completion == null
+                                                    ? 'Neužpildyta'
+                                                    : 'Pabaigtas: ${completion['dateStr']} • ${completion['user']}';
                                                 return ListTile(
                                                   key: key,
                                                   contentPadding: const EdgeInsets.only(left: 24, right: 16),
                                                   title: Text((t['description'] ?? '') as String),
-                                                  subtitle: Text('${isArray ? 'Masyvas' : 'Vienas skaičius'} • Eilės nr ${t['order'] ?? ''}'),
+                                                  subtitle: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text('${isArray ? 'Masyvas' : 'Vienas skaičius'} • Eilės nr ${t['order'] ?? ''}'),
+                                                      const SizedBox(height: 4),
+                                                      Text(completionText, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+                                                    ],
+                                                  ),
                                                   trailing: Row(
                                                     mainAxisSize: MainAxisSize.min,
                                                     children: [

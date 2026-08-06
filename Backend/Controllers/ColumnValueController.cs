@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Linq;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Backend.Controllers
 {
@@ -81,28 +82,68 @@ namespace Backend.Controllers
         {
             ColumnValue? temp = await _db.ColumnValues.AsNoTracking().FirstOrDefaultAsync(z => z.Id == id);
             if (temp == null) return NotFound();
+            ColumnTemplate? template = await _db.ColumnTemplates.AsNoTracking().FirstOrDefaultAsync(z => z.Id == columnValue.ColumnTemplateId);
+            bool isArray = template?.IsArray ?? false;
             bool isAdmin = User.HasClaim("admin", bool.TrueString);
             if (id != columnValue.Id) return BadRequest();
-            if (columnValue.CompletedAt == null)
+            if (isArray)
             {
-                if (temp == null) return NotFound();
-
-                if (temp.CompletedAt != null && !isAdmin)
+                if (temp.ArrayValue != null || temp.ArrayValue?.Length > 0)
                 {
-                    return Forbid();
+                    if (!isAdmin) return Forbid();
+                    if (columnValue.ArrayValue == null || columnValue.ArrayValue.Length == 0)
+                    {
+                        temp.ArrayValue = columnValue.ArrayValue;
+                        temp.CompletedAt = null;
+                        temp.Pabaigtas = false;
+                        temp.CompletedByUserId = null;
+                    }
+                    else
+                    {
+                        temp.ArrayValue = columnValue.ArrayValue;
+                        temp.CompletedAt = EnsureUtc(DateTime.Now);
+                        temp.Pabaigtas = true;
+                        temp.CompletedByUserId = columnValue.CompletedByUserId;
+                    }
+                }
+                else
+                {
+                    temp.ArrayValue = columnValue.ArrayValue;
+                    temp.CompletedAt = EnsureUtc(DateTime.Now);
+                    temp.Pabaigtas = true;
+                    temp.CompletedByUserId = columnValue.CompletedByUserId;
                 }
             }
             else
             {
-                columnValue.Pabaigtas = true;
+                if (temp.SingleValue != null)
+                {
+                    if (!isAdmin) return Forbid();
+                    if (columnValue.SingleValue == null)
+                    {
+                        temp.SingleValue = columnValue.SingleValue;
+                        temp.CompletedAt = null;
+                        temp.Pabaigtas = false;
+                        temp.CompletedByUserId = null;
+                    }
+                    else
+                    {
+                        temp.SingleValue = columnValue.SingleValue;
+                        temp.CompletedAt = EnsureUtc(DateTime.Now);
+                        temp.Pabaigtas = true;
+                        temp.CompletedByUserId = columnValue.CompletedByUserId;
+                    }
+                }
+                else
+                {
+                    temp.SingleValue = columnValue.SingleValue;
+                    temp.CompletedAt = EnsureUtc(DateTime.Now);
+                    temp.Pabaigtas = true;
+                    temp.CompletedByUserId = columnValue.CompletedByUserId;
+                }
             }
 
-            if (columnValue.CompletedAt != null)
-            {
-                columnValue.CompletedAt = EnsureUtc(columnValue.CompletedAt.Value);
-            }
-
-            _db.Entry(columnValue).State = EntityState.Modified;
+            _db.Entry(temp).State = EntityState.Modified;
             await _db.SaveChangesAsync();
             return NoContent();
         }

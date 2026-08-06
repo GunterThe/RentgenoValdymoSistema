@@ -422,6 +422,23 @@ class Api {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> createColumnValue(Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(Uri.parse('$baseUrl/api/ColumnValue'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create column value (${res.statusCode}): ${res.body}');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateColumnValue(int id, Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(Uri.parse('$baseUrl/api/ColumnValue/$id'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update column value (${res.statusCode}): ${res.body}');
+  }
+
   static Future<Map<String, dynamic>> createFAT({required String title}) async {
     final res = await _requestWithRefresh((h) {
       final headers = {...h, 'Content-Type': 'application/json'};
@@ -469,6 +486,29 @@ class Api {
     final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/RowIrasas'), headers: h));
     if (res.statusCode != 200) throw Exception('Failed to load row irasai');
     return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<List<dynamic>> fetchRowValues() async {
+    final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/RowValue'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load row values');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createRowValue(Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(Uri.parse('$baseUrl/api/RowValue'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create row value (${res.statusCode}): ${res.body}');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateRowValue(int id, Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(Uri.parse('$baseUrl/api/RowValue/$id'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update row value (${res.statusCode}): ${res.body}');
   }
 
   // Rows
@@ -531,19 +571,23 @@ class Api {
     return jsonDecode(res.body) as List<dynamic>;
   }
 
-  static Future<Map<String, dynamic>> createHeader(String text) async {
+  static Future<Map<String, dynamic>> createHeader(String text, {int? rowId}) async {
     final res = await _requestWithRefresh((h) {
       final headers = {...h, 'Content-Type': 'application/json'};
-      return http.post(Uri.parse('$baseUrl/api/Header'), headers: headers, body: jsonEncode({'text': text}));
+      final body = <String, dynamic>{'text': text};
+      if (rowId != null) body['rowId'] = rowId;
+      return http.post(Uri.parse('$baseUrl/api/Header'), headers: headers, body: jsonEncode(body));
     });
     if (res.statusCode != 201) throw Exception('Failed to create header (${res.statusCode}): ${res.body}');
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
-  static Future<void> updateHeader(int id, String text) async {
+  static Future<void> updateHeader(int id, String text, {int? rowId}) async {
     final res = await _requestWithRefresh((h) {
       final headers = {...h, 'Content-Type': 'application/json'};
-      return http.put(Uri.parse('$baseUrl/api/Header/$id'), headers: headers, body: jsonEncode({'id': id, 'text': text}));
+      final body = <String, dynamic>{'id': id, 'text': text};
+      if (rowId != null) body['rowId'] = rowId;
+      return http.put(Uri.parse('$baseUrl/api/Header/$id'), headers: headers, body: jsonEncode(body));
     });
     if (res.statusCode != 204) throw Exception('Failed to update header (${res.statusCode}): ${res.body}');
   }

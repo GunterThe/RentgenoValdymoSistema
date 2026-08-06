@@ -16,6 +16,17 @@ namespace Backend.Controllers
         private readonly AppDbContext _db;
         public RowValueController(AppDbContext db) => _db = db;
 
+        private static DateTime EnsureUtc(DateTime dt)
+        {
+            return dt.Kind switch
+            {
+                DateTimeKind.Utc => dt,
+                DateTimeKind.Local => dt.ToUniversalTime(),
+                DateTimeKind.Unspecified => DateTime.SpecifyKind(dt, DateTimeKind.Local).ToUniversalTime(),
+                _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+            };
+        }
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RowValue>>> GetAll() =>
             await _db.RowValues.ToListAsync();
@@ -32,12 +43,14 @@ namespace Backend.Controllers
         [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<RowValue>> Create(RowValue rowValue)
         {
-            if (string.IsNullOrEmpty(rowValue.Value)) return BadRequest("Value cannot be null.");
+            // default to 'empty' when not provided
+            if (string.IsNullOrWhiteSpace(rowValue.Value)) rowValue.Value = "empty";
             string temp = rowValue.Value;
-            if (temp != "compliant" || temp != "non-compliant" || temp != "not-specified")
+            if (temp != "compliant" && temp != "non-compliant" && temp != "not-specified" && temp != "empty")
             {
-                return BadRequest("Value must be 'compliant', 'non-compliant', or 'not-specified'.");
+                return BadRequest("Value must be 'compliant', 'non-compliant', 'not-specified', or 'empty'.");
             }
+            rowValue.CompletedAt = rowValue.CompletedAt.HasValue ? EnsureUtc(rowValue.CompletedAt.Value) : (DateTime?)null;
             _db.RowValues.Add(rowValue);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(Get), new { id = rowValue.Id }, rowValue);
@@ -51,9 +64,21 @@ namespace Backend.Controllers
 
             var existing = await _db.RowValues.FirstOrDefaultAsync(r => r.Id == id);
             if (existing == null) return NotFound();
+            // default to 'empty' when not provided
+            if (string.IsNullOrWhiteSpace(rowValue.Value)) rowValue.Value = "empty";
+
+            string temp = rowValue.Value.ToLower().Trim();
+            if (temp != "compliant" && temp != "non-compliant" && temp != "not-specified" && temp != "empty")
+            {
+                return BadRequest("Value must be 'compliant', 'non-compliant', 'not-specified', or 'empty'.");
+            }
+
+            bool isAdmin = User.HasClaim("admin", bool.TrueString);
+            if (!isAdmin)
+                return Forbid();
 
             existing.Value = rowValue.Value;
-            existing.CompletedAt = rowValue.CompletedAt;
+            existing.CompletedAt = rowValue.CompletedAt.HasValue ? EnsureUtc(rowValue.CompletedAt.Value) : (DateTime?)null;
             existing.CompletedByUserId = rowValue.CompletedByUserId;
             existing.RowId = rowValue.RowId;
             existing.RowIrasasId = rowValue.RowIrasasId;

@@ -63,6 +63,8 @@ namespace Backend.Controllers
             {
 
                 existing.Description = template.Description;
+                // apply header change so editing a template can attach/detach a header
+                existing.HeaderId = template.HeaderId;
                 existing.IsArray = template.IsArray;
                 existing.ArrayLength = template.ArrayLength;
 

@@ -30,9 +30,8 @@ namespace Backend.Models
         [Column("column_template_id")]
         public int ColumnTemplateId { get; set; }
 
-        [Required]
         [Column("completed_by_user_id")]
-        public Guid CompletedByUserId { get; set; }
+        public Guid? CompletedByUserId { get; set; }
 
         [JsonIgnore]
         public RowIrasas? RowIrasas { get; set; }

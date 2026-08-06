@@ -112,7 +112,6 @@ namespace Backend.Controllers
                 .ToListAsync();
             foreach (var s in siblings.Where(s => s.Eile > eile))
                 s.Eile -= 1;
-    
 
             _db.Zingsniai.RemoveRange(_db.Zingsniai.Where(z => z.ZingsnisTemplateId == id));
             _db.ZingsnisTemplate.Remove(item);

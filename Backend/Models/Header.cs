@@ -17,5 +17,11 @@ namespace Backend.Models
         [Column("text")]
         public string Text { get; set; } = null!;
 
+        [Required]
+        [Column("row_id")]
+        public int RowId { get; set; }
+
+        [JsonIgnore]
+        public Row? Row { get; set; }
     }
 }
