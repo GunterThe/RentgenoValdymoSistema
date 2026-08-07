@@ -34,6 +34,10 @@ namespace Backend.Data
         public DbSet<Header> Headers { get; set; } = null!;
         public DbSet<FAT> FATs { get; set; } = null!;
         public DbSet<FATRow> FATRows { get; set; } = null!;
+        public DbSet<FATReport> FATReports { get; set; } = null!;
+        public DbSet<FATReportIrasas> FATReportIrasai { get; set; } = null!;
+        public DbSet<ReportTemplate> ReportTemplates { get; set; } = null!;
+        public DbSet<ReportValue> ReportValues { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
