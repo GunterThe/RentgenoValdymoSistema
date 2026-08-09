@@ -7,6 +7,7 @@ import 'pages/fat_page.dart';
 import 'pages/login_page.dart';
 import 'pages/paskyra_page.dart';
 import 'pages/zinutes_page.dart';
+import 'pages/fatreport_page.dart';
 import 'services/auth_service.dart';
 import 'services/api.dart';
 import 'widgets/app_scaffold.dart';
@@ -111,6 +112,7 @@ class MyApp extends StatelessWidget {
         '/sablonai': (_) =>
           const AuthGuard(protectedRoute: '/sablonai', child: SablonaiPage()),
         '/fat': (_) => const AuthGuard(protectedRoute: '/fat', child: FatPage()),
+        '/fatreports': (_) => const AuthGuard(protectedRoute: '/fatreports', child: FATReportPage()),
         '/zinutes': (_) =>
             const AuthGuard(protectedRoute: '/zinutes', child: ZinutesPage()),
       },
@@ -326,6 +328,14 @@ class MainPage extends StatelessWidget {
                     subtitle: 'Peržiūra ir testų vykdymas',
                     onTap: () => Navigator.of(context).pushNamed('/testai'),
                   ),
+                      const Divider(height: 1),
+                      _actionTile(
+                        context: context,
+                        icon: Icons.description_outlined,
+                        title: 'FAT ataskaitos',
+                        subtitle: 'Valdyti ataskaitų šablonus',
+                        onTap: () => Navigator.of(context).pushNamed('/fatreports'),
+                      ),
                   const Divider(height: 1),
                   _actionTile(
                     context: context,

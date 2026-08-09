@@ -406,6 +406,35 @@ class Api {
     return jsonDecode(res.body) as List<dynamic>;
   }
 
+  // FATReport (templates container)
+  static Future<List<dynamic>> fetchFATReports() async {
+    final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/FATReport'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load FATReports');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createFATReport(Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(Uri.parse('$baseUrl/api/FATReport'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create FATReport');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateFATReport(int id, Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(Uri.parse('$baseUrl/api/FATReport/$id'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update FATReport');
+  }
+
+  static Future<void> deleteFATReport(int id) async {
+    final res = await _requestWithRefresh((h) => http.delete(Uri.parse('$baseUrl/api/FATReport/$id'), headers: h));
+    if (res.statusCode != 204) throw Exception('Failed to delete FATReport');
+  }
+
   static Future<List<dynamic>> fetchColumnValues() async {
     final res = await _requestWithRefresh((h) =>
         http.get(Uri.parse('$baseUrl/api/ColumnValue'), headers: h));
@@ -624,6 +653,44 @@ class Api {
   static Future<void> deleteColumnTemplate(int id) async {
     final res = await _requestWithRefresh((h) => http.delete(Uri.parse('$baseUrl/api/ColumnTemplate/$id'), headers: h));
     if (res.statusCode != 204) throw Exception('Failed to delete column template (${res.statusCode}): ${res.body}');
+  }
+
+  // ReportTemplate
+  static Future<List<dynamic>> fetchReportTemplates([int? fatReportId]) async {
+    final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/ReportTemplate'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load report templates');
+    final list = jsonDecode(res.body) as List<dynamic>;
+    if (fatReportId == null) return list;
+    return list.where((e) {
+      final m = e as Map<String, dynamic>;
+      return m['fatreport_id'] == fatReportId ||
+          m['fatReportId'] == fatReportId ||
+          m['fatreportId'] == fatReportId ||
+          m['fatreportid'] == fatReportId ||
+          m['fatreport_id'] == fatReportId;
+    }).toList();
+  }
+
+  static Future<Map<String, dynamic>> createReportTemplate(Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(Uri.parse('$baseUrl/api/ReportTemplate'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create report template');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateReportTemplate(int id, Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(Uri.parse('$baseUrl/api/ReportTemplate/$id'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update report template');
+  }
+
+  static Future<void> deleteReportTemplate(int id) async {
+    final res = await _requestWithRefresh((h) => http.delete(Uri.parse('$baseUrl/api/ReportTemplate/$id'), headers: h));
+    if (res.statusCode != 204) throw Exception('Failed to delete report template');
   }
 
   static Future<Map<String, dynamic>> copyTestas(int id, {String? newTestotekstas}) async {
@@ -1184,5 +1251,61 @@ class Api {
       (h) => http.delete(Uri.parse('$baseUrl/api/zingsnis/$id'), headers: h),
     );
     if (res.statusCode != 204) throw Exception('Failed to delete zingsnis');
+  }
+
+  // FATReportIrasas (instances)
+  static Future<List<dynamic>> fetchFATReportIrasai() async {
+    final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/FATReportIrasas'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load FATReportIrasai');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createFATReportIrasas(Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(Uri.parse('$baseUrl/api/FATReportIrasas'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create FATReportIrasas');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> deleteFATReportIrasas(int id) async {
+    final res = await _requestWithRefresh((h) => http.delete(Uri.parse('$baseUrl/api/FATReportIrasas/$id'), headers: h));
+    if (res.statusCode != 204) throw Exception('Failed to delete FATReportIrasas');
+  }
+
+  // ReportValue
+  static Future<List<dynamic>> fetchReportValues() async {
+    final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/ReportValue'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load report values');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> fetchReportValueByEverything(int fatreportIrasasId, int reportTemplateId) async {
+    final res = await _requestWithRefresh((h) => http.get(Uri.parse('$baseUrl/api/ReportValue/getByEverything/$fatreportIrasasId/$reportTemplateId'), headers: h));
+    if (res.statusCode != 200) throw Exception('Failed to load report value (${res.statusCode})');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createReportValue(Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.post(Uri.parse('$baseUrl/api/ReportValue'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 201) throw Exception('Failed to create report value (${res.statusCode}): ${res.body}');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<void> updateReportValue(int id, Map<String, dynamic> payload) async {
+    final res = await _requestWithRefresh((h) {
+      final headers = {...h, 'Content-Type': 'application/json'};
+      return http.put(Uri.parse('$baseUrl/api/ReportValue/$id'), headers: headers, body: jsonEncode(payload));
+    });
+    if (res.statusCode != 204) throw Exception('Failed to update report value (${res.statusCode}): ${res.body}');
+  }
+
+  static Future<void> deleteReportValue(int id) async {
+    final res = await _requestWithRefresh((h) => http.delete(Uri.parse('$baseUrl/api/ReportValue/$id'), headers: h));
+    if (res.statusCode != 204) throw Exception('Failed to delete report value (${res.statusCode}): ${res.body}');
   }
 }

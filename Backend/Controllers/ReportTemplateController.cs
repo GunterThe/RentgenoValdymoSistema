@@ -37,6 +37,7 @@ namespace Backend.Controllers
             var last = await _db.ReportTemplates.Where(z => z.FATReportId == template.FATReportId).OrderByDescending(z => z.Order).FirstOrDefaultAsync();
             if (last != null) order = last.Order + 1;
             template.Order = order;
+            System.Console.WriteLine($"Creating template with order {template.Order} for FATReportId {template.FATReportId}");
             _db.ReportTemplates.Add(template);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(Get), new { id = template.Id }, template);

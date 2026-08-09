@@ -56,7 +56,7 @@ namespace Backend.Controllers
 
         [HttpPut("{id:int}")]
         [Authorize(Policy = "AdminOnly")]
-        public async Task<IActionResult> Update(int id, TestasIrasas model)
+        public async Task<IActionResult> Update(int id, FATReportIrasas model)
         {
             if (id != model.Id) return BadRequest();
             _db.Entry(model).State = EntityState.Modified;
@@ -67,16 +67,16 @@ namespace Backend.Controllers
         // Backwards compatible route
         [HttpPut("{testasid:int}/{irasasid:int}")]
         [Authorize(Policy = "AdminOnly")]
-        public async Task<IActionResult> UpdateByPair(int testasid, int irasasid, TestasIrasas model)
+        public async Task<IActionResult> UpdateByPair(int fatreportid, int irasasid, FATReportIrasas model)
         {
-            if (testasid != model.Testasid || irasasid != model.Irasasid) return BadRequest();
+            if (fatreportid != model.FATReportId || irasasid != model.IrasasId) return BadRequest();
 
-            var existing = await _db.TestasIrasai
-                .FirstOrDefaultAsync(x => x.Testasid == testasid && x.Irasasid == irasasid);
+            var existing = await _db.FATReportIrasai
+                .FirstOrDefaultAsync(x => x.FATReportId == fatreportid && x.IrasasId == irasasid);
             if (existing == null) return NotFound();
 
-            existing.Testasid = model.Testasid;
-            existing.Irasasid = model.Irasasid;
+            existing.FATReportId = model.FATReportId;
+            existing.IrasasId = model.IrasasId;
             await _db.SaveChangesAsync();
             return NoContent();
         }
@@ -85,23 +85,23 @@ namespace Backend.Controllers
         [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> Delete(int id)
         {
-            var item = await _db.TestasIrasai.FindAsync(id);
+            var item = await _db.FATReportIrasai.FindAsync(id);
             if (item == null) return NotFound();
-            _db.Zingsniai.RemoveRange(_db.Zingsniai.Where(z => z.TestasIrasasId == id));
-            _db.TestasIrasai.Remove(item);
+            _db.ReportValues.RemoveRange(_db.ReportValues.Where(z => z.FATReportIrasasId == id));
+            _db.FATReportIrasai.Remove(item);
             await _db.SaveChangesAsync();
             return NoContent();
         }
 
         // Backwards compatible route
-        [HttpDelete("{testasid:int}/{irasasid:int}")]
+        [HttpDelete("{fatreportid:int}/{irasasid:int}")]
         [Authorize(Policy = "AdminOnly")]
-        public async Task<IActionResult> DeleteByPair(int testasid, int irasasid)
+        public async Task<IActionResult> DeleteByPair(int fatreportid, int irasasid)
         {
-            var item = await _db.TestasIrasai
-                .FirstOrDefaultAsync(x => x.Testasid == testasid && x.Irasasid == irasasid);
+            var item = await _db.FATReportIrasai
+                .FirstOrDefaultAsync(x => x.FATReportId == fatreportid && x.IrasasId == irasasid);
             if (item == null) return NotFound();
-            _db.TestasIrasai.Remove(item);
+            _db.FATReportIrasai.Remove(item);
             await _db.SaveChangesAsync();
             return NoContent();
         }
