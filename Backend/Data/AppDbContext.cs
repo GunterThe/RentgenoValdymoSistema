@@ -45,6 +45,22 @@ namespace Backend.Data
 
             modelBuilder.HasPostgresEnum<TestoTipas>();
 
+            modelBuilder.Entity<FATReportIrasas>()
+                .HasOne(fri => fri.FATReport)
+                .WithMany(fr => fr.FATReportIrasai)
+                .HasForeignKey(fri => fri.FATReportId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            modelBuilder.Entity<FATReportIrasas>()
+                .HasOne(fri => fri.Irasas)
+                .WithMany(i => i.FATReportIrasai)
+                .HasForeignKey(fri => fri.IrasasId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            modelBuilder.Entity<FATReportIrasas>()
+                .HasIndex(fri => new { fri.FATReportId, fri.IrasasId })
+                .IsUnique();
+
             modelBuilder.Entity<RowIrasas>()
                 .HasOne(ri => ri.Row)
                 .WithMany(r => r.Irasas)

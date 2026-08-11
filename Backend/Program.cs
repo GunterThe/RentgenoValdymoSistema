@@ -63,8 +63,12 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(connectionString,
-        o => o.MapEnum<TestoTipas>("testotipas")));
+{
+    options.UseNpgsql(connectionString, o => o.MapEnum<TestoTipas>("testotipas"));
+    // Temporary: log EF Core SQL to console for debugging generated SQL (includes parameter values)
+    options.LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information);
+    options.EnableSensitiveDataLogging();
+});
 
 
 builder.Services.AddAuthorization(options =>

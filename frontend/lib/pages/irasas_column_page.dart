@@ -24,6 +24,10 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
   List<Map<String, dynamic>> _columnValues = [];
   List<Map<String, dynamic>> _headers = [];
   List<Map<String, dynamic>> _rowValues = [];
+  List<Map<String, dynamic>> _fatReportIrasai = [];
+  List<Map<String, dynamic>> _fatReports = [];
+  List<Map<String, dynamic>> _reportTemplates = [];
+  List<Map<String, dynamic>> _reportValues = [];
   Map<String, String> _userNameById = {};
   final Map<String, TextEditingController> _controllers = {};
   final Set<String> _editing = {};
@@ -44,6 +48,10 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
         Api.fetchColumnValues(),
         Api.fetchHeaders(),
         Api.fetchRowValues(),
+        Api.fetchFATReportIrasai(),
+        Api.fetchFATReports(),
+        Api.fetchReportTemplates(),
+        Api.fetchReportValues(),
         Api.fetchNaudotojai(),
       ]);
 
@@ -63,7 +71,11 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
       final rowValues = (results[5])
           .map((e) => e as Map<String, dynamic>)
           .toList();
-      final naudotojai = results[6];
+      final fatReportIrasai = (results[6]).map((e) => e as Map<String, dynamic>).toList();
+      final fatReports = (results[7]).map((e) => e as Map<String, dynamic>).toList();
+      final reportTemplates = (results[8]).map((e) => e as Map<String, dynamic>).toList();
+      final reportValues = (results[9]).map((e) => e as Map<String, dynamic>).toList();
+      final naudotojai = results[10];
       setState(() {
         _rowIrasai = rowIrasai
             .where(
@@ -81,6 +93,10 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
         _columnValues = values;
         _headers = headers;
         _rowValues = rowValues;
+        _fatReportIrasai = fatReportIrasai.where((f) => (f['irasasId'] ?? f['irasasid'] ?? f['IrasasId']) == widget.irasas.id).toList();
+        _fatReports = fatReports;
+        _reportTemplates = reportTemplates;
+        _reportValues = reportValues;
         _userNameById = {
           for (final u in (naudotojai).map(
             (e) => Map<String, dynamic>.from(e as Map),
@@ -153,6 +169,86 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Klaida pridedant FAT: $e')));
+    }
+  }
+
+  Future<void> _attachFATReport() async {
+    try {
+      final reports = await Api.fetchFATReports();
+      int? selectedId;
+      if (!mounted) return;
+      final ok = await showDialog<bool?>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setLocal) => AlertDialog(
+            title: const Text('Pridėti FAT ataskaitą'),
+            content: SizedBox(
+              width: 560,
+              child: ListView(
+                shrinkWrap: true,
+                children: reports.map<Widget>((f) {
+                  final fm = f as Map<String, dynamic>;
+                  return RadioListTile<int>(
+                    value: fm['id'] as int,
+                    groupValue: selectedId,
+                    title: Text(fm['title'] ?? fm['Title'] ?? 'Ataskaita #${fm['id']}'),
+                    onChanged: (v) => setLocal(() => selectedId = v),
+                  );
+                }).toList(),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Atšaukti')),
+              FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Pridėti')),
+            ],
+          ),
+        ),
+      );
+      if (ok != true || selectedId == null) return;
+      final created = await Api.createFATReportIrasas({'fatreport_id': selectedId, 'irasasId': widget.irasas.id});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('FAT ataskaita pridėta')));
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Klaida pridedant FAT ataskaitą: $e')));
+    }
+  }
+
+  Future<void> _createOrEditReportValue(Map<String, dynamic> fatReportIrasas, Map<String, dynamic> tpl) async {
+    final existing = _reportValues.firstWhere(
+      (v) => (v['fatreport_irasasid'] ?? v['FATReportIrasasId'] ?? v['fatreportIrasasid']) == (fatReportIrasas['id'] ?? fatReportIrasas['Id']) &&
+          (v['report_template_id'] ?? v['ReportTemplateId'] ?? v['reportTemplateId']) == (tpl['id'] ?? tpl['Id']),
+      orElse: () => <String, dynamic>{},
+    );
+    final ctrl = TextEditingController(text: existing.isEmpty ? '' : ((existing['value'] ?? existing['Value'])?.toString() ?? ''));
+    final ok = await showDialog<bool?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Reikšmė: ${tpl['text'] ?? tpl['Text'] ?? tpl['description'] ?? tpl['Description'] ?? ''}'),
+        content: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Reikšmė')),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Atšaukti')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Išsaugoti')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final text = ctrl.text.trim();
+    try {
+      if (existing.isEmpty) {
+        await Api.createReportValue({'value': text, 'fatreport_irasasid': fatReportIrasas['id'], 'report_template_id': tpl['id']});
+      } else {
+        final id = existing['id'] ?? existing['Id'];
+        final payload = {'id': id, 'value': text, 'fatreport_irasasid': fatReportIrasas['id'], 'report_template_id': tpl['id']};
+        await Api.updateReportValue(id as int, payload);
+      }
+      if (!mounted) return;
+      await _load();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reikšmė išsaugota')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Klaida: $e')));
     }
   }
 
@@ -436,12 +532,65 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
                             onPressed: _attachFat,
                             child: const Text('Pridėti FAT šabloną'),
                           ),
+                          const SizedBox(height: 16),
+                          // If there are no FATReport instances for this Irasas, prompt to add one
+                          if (_fatReportIrasai.isEmpty) ...[
+                            const SizedBox(height: 8),
+                            const Text('Šitam įrašui nėra FAT ataskaitų. Pridėkite ataskaitą.'),
+                            const SizedBox(height: 8),
+                            ElevatedButton(onPressed: _attachFATReport, child: const Text('Pridėti FAT ataskaitą')),
+                          ]
                         ],
                       )
-                    : ListView.builder(
-                        itemCount: _rowIrasai.length,
-                        itemBuilder: (ctx, index) {
-                          final r = _rowIrasai[index];
+                    : ListView(
+                        children: [
+                          // Render attached FATReport templates above the row cards
+                          for (final fr in _fatReportIrasai)
+                            Builder(builder: (ctx) {
+                              final frId = (fr['fatreportId'] ?? fr['fatReportId'] ?? fr['FATReportId'] ?? fr['fatreport_id'] ?? fr['fatreportid'] ?? fr['fatreportid']) ?? fr['id'];
+                              final frInt = frId is int ? frId : (fr['id'] ?? fr['Id']);
+                              final reportMeta = _fatReports.firstWhere((x) => (x['id'] ?? x['Id']) == frInt, orElse: () => <String, dynamic>{});
+                              final reportTitle = reportMeta.isEmpty ? 'Ataskaita #${frInt}' : (reportMeta['title'] ?? reportMeta['Title'] ?? 'Ataskaita');
+                              final templates = _reportTemplates.where((t) {
+                                final m = t;
+                                return m['fatreport_id'] == frInt || m['fatReportId'] == frInt || m['fatreportId'] == frInt || m['fatreportid'] == frInt;
+                              }).toList()..sort((a,b) => (a['order'] as int? ?? 0).compareTo(b['order'] as int? ?? 0));
+
+                              if (templates.isEmpty) return const SizedBox.shrink();
+                              return Card(
+                                margin: const EdgeInsets.symmetric(vertical: 8),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(reportTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                      const SizedBox(height: 8),
+                                      Column(
+                                        children: templates.map<Widget>((tpl) {
+                                          final t = tpl;
+                                          final existing = _reportValues.firstWhere(
+                                            (v) => (v['fatreport_irasasid'] ?? v['FATReportIrasasId'] ?? v['fatreportIrasasid']) == (fr['id'] ?? fr['Id']) &&
+                                                (v['report_template_id'] ?? v['ReportTemplateId'] ?? v['reportTemplateId']) == (t['id'] ?? t['Id']),
+                                            orElse: () => <String, dynamic>{},
+                                          );
+                                          final valText = existing.isEmpty ? '(tuščia)' : (existing['value'] ?? existing['Value'] ?? '').toString();
+                                          return ListTile(
+                                            title: Text(t['text'] ?? t['Text'] ?? t['description'] ?? t['Description'] ?? ''),
+                                            subtitle: Text(valText),
+                                            trailing: FilledButton(onPressed: () => _createOrEditReportValue(fr, t), child: const Text('Redaguoti')),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
+
+                          // Then render the usual row cards
+                          ...List.generate(_rowIrasai.length, (index) {
+                            final r = _rowIrasai[index];
                           final rowDef = _rows.firstWhere(
                             (x) =>
                                 (x['id'] ?? x['Id']) ==
@@ -466,7 +615,7 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
                             ),
                           );
 
-                          return Card(
+                            return Card(
                             margin: const EdgeInsets.symmetric(vertical: 8),
                             child: Padding(
                               padding: const EdgeInsets.all(12),
@@ -1085,8 +1234,9 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
                           );
                         },
                       ),
-              ),
+                    ]),
             ),
+          ),
     );
   }
 }

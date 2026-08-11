@@ -17,6 +17,6 @@ namespace Backend.Models
         public string Text { get; set; } = null!;
 
         [JsonIgnore]
-        public ICollection<TestasIrasas> Irasai { get; set; } = new List<TestasIrasas>();
+        public ICollection<FATReportIrasas> FATReportIrasai { get; set; } = new List<FATReportIrasas>();
     }
 }

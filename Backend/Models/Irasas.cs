@@ -38,7 +38,10 @@ namespace Backend.Models
 
         [JsonIgnore]
         public ICollection<RowIrasas> Rows { get; set; } = new List<RowIrasas>();
-        
+
+        [JsonIgnore]
+        public ICollection<FATReportIrasas> FATReportIrasai { get; set; } = new List<FATReportIrasas>();
+
         [JsonIgnore]
         public Lokacija? Lokacija { get; set; }
     }
