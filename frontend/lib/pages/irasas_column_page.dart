@@ -1,9 +1,13 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/irasas.dart';
+import 'package:file_picker/file_picker.dart';
+import '../models/prisegtas_failas.dart';
 import '../services/api.dart';
+import '../services/pdf_export.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_scaffold.dart';
 
@@ -17,6 +21,7 @@ class IrasasColumnPage extends StatefulWidget {
 }
 
 class _IrasasColumnPageState extends State<IrasasColumnPage> {
+  static const double _imagePreviewHeight = 140;
   bool _loading = true;
   List<Map<String, dynamic>> _rowIrasai = [];
   List<Map<String, dynamic>> _rows = [];
@@ -29,6 +34,8 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
   List<Map<String, dynamic>> _reportTemplates = [];
   List<Map<String, dynamic>> _reportValues = [];
   Map<String, String> _userNameById = {};
+  final Map<int, List<PrisegtasFailas>> _failaiByRowId = {};
+  final Set<int> _loadingFailaiForRow = {};
   final Map<String, TextEditingController> _controllers = {};
   final Set<String> _editing = {};
 
@@ -205,7 +212,7 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
         ),
       );
       if (ok != true || selectedId == null) return;
-      final created = await Api.createFATReportIrasas({'fatreport_id': selectedId, 'irasasId': widget.irasas.id});
+      await Api.createFATReportIrasas({'fatReportId': selectedId, 'irasasId': widget.irasas.id});
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('FAT ataskaita pridėta')));
       await _load();
@@ -217,8 +224,8 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
 
   Future<void> _createOrEditReportValue(Map<String, dynamic> fatReportIrasas, Map<String, dynamic> tpl) async {
     final existing = _reportValues.firstWhere(
-      (v) => (v['fatreport_irasasid'] ?? v['FATReportIrasasId'] ?? v['fatreportIrasasid']) == (fatReportIrasas['id'] ?? fatReportIrasas['Id']) &&
-          (v['report_template_id'] ?? v['ReportTemplateId'] ?? v['reportTemplateId']) == (tpl['id'] ?? tpl['Id']),
+      (v) => (v['fatreport_irasasid'] ?? v['FATReportIrasasId'] ?? v['fatreportIrasasid'] ?? v['fatReportIrasasId']) == (fatReportIrasas['id'] ?? fatReportIrasas['Id']) &&
+          (v['report_template_id'] ?? v['ReportTemplateId'] ?? v['reportTemplateId'] ?? v['reportTemplateId']) == (tpl['id'] ?? tpl['Id']),
       orElse: () => <String, dynamic>{},
     );
     final ctrl = TextEditingController(text: existing.isEmpty ? '' : ((existing['value'] ?? existing['Value'])?.toString() ?? ''));
@@ -237,11 +244,11 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
     final text = ctrl.text.trim();
     try {
       if (existing.isEmpty) {
-        await Api.createReportValue({'value': text, 'fatreport_irasasid': fatReportIrasas['id'], 'report_template_id': tpl['id']});
-      } else {
+          await Api.createReportValue({'value': text, 'fatReportIrasasId': fatReportIrasas['id'], 'reportTemplateId': tpl['id']});
+        } else {
         final id = existing['id'] ?? existing['Id'];
-        final payload = {'id': id, 'value': text, 'fatreport_irasasid': fatReportIrasas['id'], 'report_template_id': tpl['id']};
-        await Api.updateReportValue(id as int, payload);
+        final payload = {'id': id, 'value': text, 'fatReportIrasasId': fatReportIrasas['id'], 'reportTemplateId': tpl['id']};
+          await Api.updateReportValue(id as int, payload);
       }
       if (!mounted) return;
       await _load();
@@ -484,6 +491,114 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
     }
   }
 
+  Future<void> _loadRowFailai(int rowId) async {
+    if (_loadingFailaiForRow.contains(rowId)) return;
+    setState(() => _loadingFailaiForRow.add(rowId));
+    try {
+      final list = await Api.fetchPrisegtiFailaiByRow(rowId);
+      final items = list.map((e) => PrisegtasFailas.fromJson(e as Map<String, dynamic>)).toList();
+      if (!mounted) return;
+      setState(() => _failaiByRowId[rowId] = items);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _failaiByRowId[rowId] = const <PrisegtasFailas>[]);
+    } finally {
+      if (mounted) setState(() => _loadingFailaiForRow.remove(rowId));
+    }
+  }
+
+  Future<void> _attachFileToRow(int rowId) async {
+    // Attachment moved to FAT rows page. No-op here.
+  }
+
+  Future<void> _deleteRowFile(PrisegtasFailas f, int rowId) async {
+    try {
+      await Api.deletePrisegtasFailas(f.id);
+      if (!mounted) return;
+      setState(() {
+        _failaiByRowId[rowId] = (_failaiByRowId[rowId] ?? []).where((x) => x.id != f.id).toList();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Klaida trinant failą: $e')));
+    }
+  }
+
+  String _fmtBytes(int? bytes) {
+    if (bytes == null) return '';
+    if (bytes < 1024) return '$bytes B';
+    final kb = bytes / 1024;
+    if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
+    final mb = kb / 1024;
+    if (mb < 1024) return '${mb.toStringAsFixed(1)} MB';
+    final gb = mb / 1024;
+    return '${gb.toStringAsFixed(1)} GB';
+  }
+
+  String _fmtDateTime(DateTime dt) {
+    final local = dt.toLocal();
+    final y = local.year.toString().padLeft(4, '0');
+    final m = local.month.toString().padLeft(2, '0');
+    final d = local.day.toString().padLeft(2, '0');
+    final hh = local.hour.toString().padLeft(2, '0');
+    final mm = local.minute.toString().padLeft(2, '0');
+    return '$y-$m-$d $hh:$mm';
+  }
+
+  bool _isImageFileName(String? n) {
+    if (n == null) return false;
+    final lower = n.toLowerCase();
+    return lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.bmp') || lower.endsWith('.webp') || lower.endsWith('.avif') || lower.endsWith('.heic') || lower.endsWith('.heif') || lower.endsWith('.tif') || lower.endsWith('.tiff');
+  }
+
+  Future<void> _openDownload(PrisegtasFailas f) async {
+    final uri = Api.prisegtasFailasDownloadUri(f.id);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  void _openFullResImage(String url) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: InteractiveViewer(
+          child: Image.network(
+            url,
+            fit: BoxFit.contain,
+            errorBuilder: (context, _, __) => const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Nepavyko įkelti paveikslėlio'),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _imagePreview(String url) {
+    return SizedBox(
+      height: _imagePreviewHeight,
+      width: double.infinity,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Material(
+          child: InkWell(
+            onTap: () => _openFullResImage(url),
+            child: Container(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              alignment: Alignment.center,
+              child: Image.network(
+                url,
+                fit: BoxFit.contain,
+                errorBuilder: (context, _, __) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   String? _headerTextForTemplate(Map<String, dynamic> template) {
     final hid =
         template['headerId'] ?? template['header_id'] ?? template['HeaderId'];
@@ -544,6 +659,15 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
                       )
                     : ListView(
                         children: [
+                          // If there are no attached FATReport instances, show a prompt/button
+                          if (_fatReportIrasai.isEmpty) ...[
+                            const SizedBox(height: 8),
+                            const Text('Šitam įrašui nėra FAT ataskaitų. Pridėkite ataskaitą.'),
+                            const SizedBox(height: 8),
+                            ElevatedButton(onPressed: _attachFATReport, child: const Text('Pridėti FAT ataskaitą')),
+                            const SizedBox(height: 12),
+                          ],
+
                           // Render attached FATReport templates above the row cards
                           for (final fr in _fatReportIrasai)
                             Builder(builder: (ctx) {
@@ -570,15 +694,28 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
                                         children: templates.map<Widget>((tpl) {
                                           final t = tpl;
                                           final existing = _reportValues.firstWhere(
-                                            (v) => (v['fatreport_irasasid'] ?? v['FATReportIrasasId'] ?? v['fatreportIrasasid']) == (fr['id'] ?? fr['Id']) &&
-                                                (v['report_template_id'] ?? v['ReportTemplateId'] ?? v['reportTemplateId']) == (t['id'] ?? t['Id']),
+                                            (v) => (v['fatreport_irasasid'] ?? v['FATReportIrasasId'] ?? v['fatreportIrasasid'] ?? v['fatReportIrasasId']) == (fr['id'] ?? fr['Id']) &&
+                                                (v['report_template_id'] ?? v['ReportTemplateId'] ?? v['reportTemplateId'] ?? v['reportTemplateId']) == (t['id'] ?? t['Id']),
                                             orElse: () => <String, dynamic>{},
                                           );
                                           final valText = existing.isEmpty ? '(tuščia)' : (existing['value'] ?? existing['Value'] ?? '').toString();
                                           return ListTile(
                                             title: Text(t['text'] ?? t['Text'] ?? t['description'] ?? t['Description'] ?? ''),
                                             subtitle: Text(valText),
-                                            trailing: FilledButton(onPressed: () => _createOrEditReportValue(fr, t), child: const Text('Redaguoti')),
+                                            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                              FilledButton(onPressed: () => _createOrEditReportValue(fr, t), child: const Text('Redaguoti')),
+                                              const SizedBox(width: 8),
+                                              IconButton(
+                                                tooltip: 'Eksportuoti PDF',
+                                                onPressed: () async {
+                                                  final frId = fr['fatreportId'] ?? fr['fatReportId'] ?? fr['FATReportId'] ?? fr['fatreport_id'] ?? fr['fatreportid'] ?? fr['fatreportid'];
+                                                  final fatReportId = frId is int ? frId : (fr['id'] ?? fr['Id']);
+                                                  final irasasId = widget.irasas.id;
+                                                  await PdfExport.exportFatReportPdf(context, fatReportId as int, irasasId);
+                                                },
+                                                icon: const Icon(Icons.picture_as_pdf),
+                                              ),
+                                            ]),
                                           );
                                         }).toList(),
                                       ),
@@ -1228,6 +1365,81 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
                                         );
                                       },
                                     ),
+                                  const SizedBox(height: 8),
+                                  Builder(
+                                    builder: (ctx2) {
+                                      final rowIdVal = rowId is int ? rowId as int : int.tryParse(rowId?.toString() ?? '') ?? 0;
+                                      final files = _failaiByRowId[rowIdVal] ?? const <PrisegtasFailas>[];
+                                      return Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  'Failai',
+                                                  style: TextStyle(
+                                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                              FilledButton.icon(
+                                                onPressed: null,
+                                                icon: const Icon(Icons.attach_file),
+                                                label: const Text('Pridėti'),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              IconButton(
+                                                tooltip: 'Atnaujinti failus',
+                                                onPressed: () => _loadRowFailai(rowIdVal),
+                                                icon: const Icon(Icons.refresh),
+                                              ),
+                                            ],
+                                          ),
+                                          if (_loadingFailaiForRow.contains(rowIdVal))
+                                            const Padding(
+                                              padding: EdgeInsets.only(top: 6),
+                                              child: LinearProgressIndicator(),
+                                            ),
+                                          if (files.isNotEmpty)
+                                            ...files
+                                                .where((f) => _isImageFileName(f.failoPav))
+                                                .map(
+                                                  (f) => Padding(
+                                                    padding: const EdgeInsets.only(bottom: 10),
+                                                    child: _imagePreview(
+                                                      Api.prisegtasFailasFileUri(f.id).toString(),
+                                                    ),
+                                                  ),
+                                                ),
+                                          if (files.isNotEmpty)
+                                            ...files.map(
+                                              (f) => ListTile(
+                                                contentPadding: EdgeInsets.zero,
+                                                title: Text(f.failoPav ?? f.id),
+                                                subtitle: Text(_fmtBytes(f.dydis)),
+                                                trailing: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    IconButton(
+                                                      tooltip: 'Atsisiųsti',
+                                                      onPressed: () => _openDownload(f),
+                                                      icon: const Icon(Icons.download_outlined),
+                                                    ),
+                                                    IconButton(
+                                                      tooltip: 'Pašalinti',
+                                                      onPressed: () => _deleteRowFile(f, rowIdVal),
+                                                      icon: const Icon(Icons.delete_outline),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      );
+                                    },
+                                  ),
                                 ],
                               ),
                             ),

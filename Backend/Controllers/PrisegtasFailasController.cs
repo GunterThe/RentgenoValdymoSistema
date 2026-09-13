@@ -86,6 +86,16 @@ namespace Backend.Controllers
             return list;
         }
 
+        [HttpGet("byRow/{rowId}")]
+        public async Task<ActionResult<IEnumerable<PrisegtasFailas>>> GetByRow(int rowId)
+        {
+            var list = await _db.PrisegtiFailai
+                .Where(p => p.RowId == rowId)
+                .OrderByDescending(p => p.SukurimoLaikas)
+                .ToListAsync();
+            return list;
+        }
+
         [HttpGet("file/{id}")]
         [Authorize]
         public async Task<IActionResult> GetFile(Guid id)
@@ -195,6 +205,45 @@ namespace Backend.Controllers
             await _db.SaveChangesAsync();
 
             return CreatedAtAction(nameof(Get), new { id = model.Id }, model);
+        }
+
+        [HttpPost("uploadRow/{rowId}")]
+        [Consumes("multipart/form-data")]
+        [Authorize]
+        public async Task<ActionResult<PrisegtasFailas>> UploadRowFile(int rowId, IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest("No file uploaded.");
+            if (!IsImageFileName(file.FileName)) return BadRequest("Only image files are allowed.");
+
+            var rowExists = await _db.Rows.AsNoTracking().AnyAsync(r => r.Id == rowId);
+            if (!rowExists) return NotFound("Row not found.");
+
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "rows");
+            if (!Directory.Exists(uploadsDir)) Directory.CreateDirectory(uploadsDir);
+
+            var savedFileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            var filePath = Path.Combine(uploadsDir, savedFileName);
+
+            await using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var model = new PrisegtasFailas
+            {
+                Id = Guid.NewGuid(),
+                RowId = rowId,
+                FailoPav = file.FileName,
+                Dydis = file.Length,
+                Nuoroda = Path.Combine("uploads", "rows", savedFileName),
+                SukurimoLaikas = DateTime.UtcNow
+            };
+
+            _db.PrisegtiFailai.Add(model);
+            await _db.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(Get), new { id = model.Id }, model);
+
         }
 
         [HttpPut("{id}")]

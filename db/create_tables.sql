@@ -107,4 +107,9 @@ CREATE TABLE IF NOT EXISTS "column_value" (
   CONSTRAINT fk_colvalue_user FOREIGN KEY ("completed_by_user_id") REFERENCES "naudotojas"("id")
 );
 
+-- Ensure `row_id` exists on `prisegtasfailas` and is nullable with a NULL default
+ALTER TABLE IF EXISTS "prisegtasfailas" ADD COLUMN IF NOT EXISTS "row_id" INTEGER;
+ALTER TABLE IF EXISTS "prisegtasfailas" ALTER COLUMN "row_id" DROP NOT NULL;
+ALTER TABLE IF EXISTS "prisegtasfailas" ALTER COLUMN "row_id" SET DEFAULT NULL;
+
 COMMIT;

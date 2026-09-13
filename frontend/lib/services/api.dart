@@ -1050,6 +1050,21 @@ class Api {
     return jsonDecode(res.body) as List<dynamic>;
   }
 
+  static Future<List<dynamic>> fetchPrisegtiFailaiByRow(
+    int rowId,
+  ) async {
+    final res = await _requestWithRefresh(
+      (h) => http.get(
+        Uri.parse('$baseUrl/api/prisegtasfailas/byRow/$rowId'),
+        headers: h,
+      ),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load row files');
+    }
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
   static Future<Map<String, dynamic>> uploadPrisegtasFailasToZingsnis({
     required int zingsnisId,
     required String fileName,
@@ -1146,6 +1161,54 @@ class Api {
       throw Exception(
         'Failed to upload template image (${streamed.statusCode}): $body',
       );
+    }
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> uploadPrisegtasFailasToRow({
+    required int rowId,
+    required String fileName,
+    String? filePath,
+    List<int>? bytes,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/prisegtasfailas/uploadRow/$rowId');
+
+    Future<http.StreamedResponse> sendOnce() async {
+      final req = http.MultipartRequest('POST', uri);
+      final headers = await _headers();
+      req.headers.addAll(headers);
+
+      if (bytes != null) {
+        req.files.add(
+          http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+        );
+      } else if (filePath != null) {
+        req.files.add(
+          await http.MultipartFile.fromPath(
+            'file',
+            filePath,
+            filename: fileName,
+          ),
+        );
+      } else {
+        throw ArgumentError('Either bytes or filePath must be provided');
+      }
+
+      return req.send();
+    }
+
+    var streamed = await sendOnce();
+    if (streamed.statusCode == 401) {
+      await AuthService.instance.refreshTokens();
+      streamed = await sendOnce();
+      if (streamed.statusCode == 401) {
+        await AuthService.instance.logout();
+      }
+    }
+
+    final body = await streamed.stream.bytesToString();
+    if (streamed.statusCode != 201) {
+      throw Exception('Failed to upload file (${streamed.statusCode}): $body');
     }
     return jsonDecode(body) as Map<String, dynamic>;
   }

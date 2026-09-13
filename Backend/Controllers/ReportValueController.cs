@@ -43,6 +43,13 @@ namespace Backend.Controllers
         [HttpPost]
         public async Task<ActionResult<ReportValue>> Create(ReportValue reportValue)
         {
+            // Validate foreign keys to give a clearer error instead of a DB constraint exception
+            var fatReportIrasas = await _db.FATReportIrasai.FindAsync(reportValue.FATReportIrasasId);
+            if (fatReportIrasas == null) return BadRequest($"FATReportIrasas with id {reportValue.FATReportIrasasId} not found");
+
+            var reportTemplate = await _db.ReportTemplates.FindAsync(reportValue.ReportTemplateId);
+            if (reportTemplate == null) return BadRequest($"ReportTemplate with id {reportValue.ReportTemplateId} not found");
+
             _db.ReportValues.Add(reportValue);
             await _db.SaveChangesAsync();
 

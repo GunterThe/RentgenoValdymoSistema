@@ -30,10 +30,16 @@ namespace Backend.Models
         [Column("zingsnis_template_id")]
         public int? ZingsnisTemplateId { get; set; }
 
+        [Column("row_id")]
+        public int? RowId { get; set; }
+
         [JsonIgnore]
         public Zingsnis? Zingsnis { get; set; }
 
         [JsonIgnore]
         public ZingsnisTemplate? ZingsnisTemplate { get; set; }
+
+        [JsonIgnore]
+        public Row? Row { get; set; }
     }
 }

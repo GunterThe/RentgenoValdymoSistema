@@ -94,17 +94,17 @@ class _ReportValuesPageState extends State<ReportValuesPage> {
     }
 
     try {
-      if (t.valueId == null) {
+        if (t.valueId == null) {
         final created = await Api.createReportValue({
           'value': text,
-          'fatreport_irasasid': _selectedIrasasId,
-          'report_template_id': t.templateId,
+          'fatReportIrasasId': _selectedIrasasId,
+          'reportTemplateId': t.templateId,
         });
         final m = created;
         t.value = m['value'] as String?;
         t.valueId = m['id'] as int?;
       } else {
-        final payload = {'id': t.valueId, 'value': text, 'fatreport_irasasid': _selectedIrasasId, 'report_template_id': t.templateId};
+        final payload = {'id': t.valueId, 'value': text, 'fatReportIrasasId': _selectedIrasasId, 'reportTemplateId': t.templateId};
         await Api.updateReportValue(t.valueId!, payload);
         t.value = text;
       }
