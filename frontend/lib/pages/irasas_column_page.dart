@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/irasas.dart';
-import 'package:file_picker/file_picker.dart';
 import '../models/prisegtas_failas.dart';
 import '../services/api.dart';
 import '../services/pdf_export.dart';
@@ -198,7 +197,7 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
                   return RadioListTile<int>(
                     value: fm['id'] as int,
                     groupValue: selectedId,
-                    title: Text(fm['title'] ?? fm['Title'] ?? 'Ataskaita #${fm['id']}'),
+                    title: Text(fm['text'] ?? fm['text'] ?? 'Ataskaita #${fm['id']}'),
                     onChanged: (v) => setLocal(() => selectedId = v),
                   );
                 }).toList(),
@@ -507,9 +506,6 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
     }
   }
 
-  Future<void> _attachFileToRow(int rowId) async {
-    // Attachment moved to FAT rows page. No-op here.
-  }
 
   Future<void> _deleteRowFile(PrisegtasFailas f, int rowId) async {
     try {
@@ -535,15 +531,6 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
     return '${gb.toStringAsFixed(1)} GB';
   }
 
-  String _fmtDateTime(DateTime dt) {
-    final local = dt.toLocal();
-    final y = local.year.toString().padLeft(4, '0');
-    final m = local.month.toString().padLeft(2, '0');
-    final d = local.day.toString().padLeft(2, '0');
-    final hh = local.hour.toString().padLeft(2, '0');
-    final mm = local.minute.toString().padLeft(2, '0');
-    return '$y-$m-$d $hh:$mm';
-  }
 
   bool _isImageFileName(String? n) {
     if (n == null) return false;
@@ -1368,7 +1355,7 @@ class _IrasasColumnPageState extends State<IrasasColumnPage> {
                                   const SizedBox(height: 8),
                                   Builder(
                                     builder: (ctx2) {
-                                      final rowIdVal = rowId is int ? rowId as int : int.tryParse(rowId?.toString() ?? '') ?? 0;
+                                      final rowIdVal = rowId is int ? rowId : int.tryParse(rowId?.toString() ?? '') ?? 0;
                                       final files = _failaiByRowId[rowIdVal] ?? const <PrisegtasFailas>[];
                                       return Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,

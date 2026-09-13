@@ -127,60 +127,115 @@ class PdfExport {
             content.add(pw.SizedBox(height: 12));
             content.add(pw.Text('Eilutės:', style: baseStyle.copyWith(fontWeight: pw.FontWeight.bold)));
 
-            for (final ri in rowIrasai) {
-              final rowId = ri['rowId'] ?? ri['rowid'] ?? ri['row_id'];
-              final rowDef = rows.firstWhere((r) => (r['id'] ?? r['Id']) == rowId, orElse: () => <String, dynamic>{});
-              content.add(pw.SizedBox(height: 8));
-              content.add(pw.Text(rowDef['description'] ?? rowDef['Description'] ?? rowDef['description'] ?? 'Eilutė', style: baseStyle.copyWith(fontWeight: pw.FontWeight.bold)));
+            for (var idx = 0; idx < rowIrasai.length; idx++) {
+              final ri = rowIrasai[idx];
+              final rowIdRaw = ri['rowId'] ?? ri['rowid'] ?? ri['row_id'];
+              final rowId = rowIdRaw is int ? rowIdRaw : int.tryParse(rowIdRaw?.toString() ?? '') ?? 0;
+              final rowDef = rows.firstWhere((r) => (r['id'] ?? r['Id']) == rowIdRaw, orElse: () => <String, dynamic>{});
+              final desc = (rowDef['description'] ?? rowDef['Description'] ?? rowDef['desc'] ?? '').toString();
+              final controlMethods = (rowDef['controlMethods'] ?? rowDef['control_methods'] ?? '').toString();
 
-              // Row value (if any)
+              // Row value
               final rv = rowValues.firstWhere(
                 (v) => (v['row_irasas_id'] ?? v['rowIrasasId'] ?? v['RowIrasasId']) == (ri['id'] ?? ri['Id']),
                 orElse: () => <String, dynamic>{},
               );
-              if (rv.isNotEmpty) {
-                final rvText = (rv['value'] ?? rv['Value'] ?? '').toString();
-                content.add(pw.Padding(padding: pw.EdgeInsets.only(top: 6), child: pw.Text('Eilutės reikšmė: $rvText', style: baseStyle)));
-              }
+              final rvText = rv.isNotEmpty ? ((rv['value'] ?? rv['Value'] ?? '').toString()) : '';
 
-              // Columns for this row
-              final templatesForRow = columnTemplates.where((ct) => (ct['row_id'] ?? ct['rowId'] ?? ct['rowid']) == rowId).toList()..sort((a,b) => (a['order'] as int? ?? 0).compareTo(b['order'] as int? ?? 0));
+              // Header table: Row count | row text | control method | row value
+              content.add(pw.SizedBox(height: 8));
+              content.add(pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey700, width: 0.5),
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(1),
+                  1: const pw.FlexColumnWidth(4),
+                  2: const pw.FlexColumnWidth(3),
+                  3: const pw.FlexColumnWidth(2),
+                },
+                children: [
+                  pw.TableRow(children: [
+                    pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('Nr', style: baseStyle.copyWith(fontWeight: pw.FontWeight.bold))),
+                    pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('Eilutė', style: baseStyle.copyWith(fontWeight: pw.FontWeight.bold))),
+                    pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('Kontrolės metodas', style: baseStyle.copyWith(fontWeight: pw.FontWeight.bold))),
+                    pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('Eilutės reikšmė', style: baseStyle.copyWith(fontWeight: pw.FontWeight.bold))),
+                  ]),
+                  pw.TableRow(children: [
+                    pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('${idx + 1}', style: baseStyle)),
+                    pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text(desc, style: baseStyle)),
+                    pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text(controlMethods, style: baseStyle)),
+                    pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text(rvText, style: baseStyle)),
+                  ]),
+                ],
+              ));
+
+              // Columns header space
+              final templatesForRow = columnTemplates.where((ct) => (ct['row_id'] ?? ct['rowId'] ?? ct['rowid']) == rowIdRaw).toList()..sort((a, b) => (a['order'] as int? ?? 0).compareTo(b['order'] as int? ?? 0));
               if (templatesForRow.isNotEmpty) {
                 content.add(pw.SizedBox(height: 6));
-                content.add(pw.Text('Stulpeliai:', style: baseStyle.copyWith(fontWeight: pw.FontWeight.bold)));
-                for (final ct in templatesForRow) {
-                  final header = headers.firstWhere((h) => (h['id'] ?? h['Id']) == (ct['header_id'] ?? ct['headerId'] ?? ct['headerid']), orElse: () => <String, dynamic>{});
-                  final headerText = header.isEmpty ? '' : (header['text'] ?? header['Text'] ?? '');
-                  final colVal = columnValues.firstWhere(
-                    (cv) => (cv['row_irasas_id'] ?? cv['rowIrasasId'] ?? cv['RowIrasasId']) == (ri['id'] ?? ri['Id']) &&
-                        (cv['column_template_id'] ?? cv['columnTemplateId'] ?? cv['column_template_id']) == (ct['id'] ?? ct['Id']),
-                    orElse: () => <String, dynamic>{},
-                  );
-                  final colValText = colVal.isEmpty ? '(tuščia)' : ((colVal['single_value'] ?? colVal['singleValue'] ?? colVal['array_value'] ?? colVal['arrayValue'] ?? colVal['value'])?.toString() ?? '(tuščia)');
-                  content.add(pw.Padding(padding: pw.EdgeInsets.only(top: 4, bottom: 4), child: pw.Row(children: [pw.Expanded(child: pw.Text('${ct['description'] ?? ct['Description'] ?? ''} ${headerText.isNotEmpty ? ' - $headerText' : ''}', style: baseStyle)), pw.Text(colValText, style: baseStyle)])));
-                }
+                // Columns table: left column label | right column values (single or array)
+                content.add(pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.grey600, width: 0.5),
+                  columnWidths: {0: const pw.FlexColumnWidth(3), 1: const pw.FlexColumnWidth(5)},
+                  children: [
+                    pw.TableRow(children: [
+                      pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('Stulpelis', style: baseStyle.copyWith(fontWeight: pw.FontWeight.bold))),
+                      pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('Reikšmė', style: baseStyle.copyWith(fontWeight: pw.FontWeight.bold))),
+                    ]),
+                    for (final ct in templatesForRow)
+                      () {
+                        final header = headers.firstWhere((h) => (h['id'] ?? h['Id']) == (ct['header_id'] ?? ct['headerId'] ?? ct['headerid']), orElse: () => <String, dynamic>{});
+                        final headerText = header.isEmpty ? '' : (header['text'] ?? header['Text'] ?? '');
+                        final label = (ct['description'] ?? ct['Description'] ?? ct['desc'] ?? '').toString();
+                        final colVal = columnValues.firstWhere(
+                          (cv) => (cv['row_irasas_id'] ?? cv['rowIrasasId'] ?? cv['RowIrasasId']) == (ri['id'] ?? ri['Id']) &&
+                              (cv['column_template_id'] ?? cv['columnTemplateId'] ?? cv['column_template_id']) == (ct['id'] ?? ct['Id']),
+                          orElse: () => <String, dynamic>{},
+                        );
+                        final single = (colVal['single_value'] ?? colVal['singleValue'] ?? colVal['value'])?.toString();
+                        final arrayVal = colVal['array_value'] ?? colVal['arrayValue'];
+                        final List<String> items = [];
+                        if (arrayVal is List) {
+                          for (final it in arrayVal) {
+                            items.add(it?.toString() ?? '');
+                          }
+                        } else if (arrayVal is String) {
+                          // attempt comma split
+                          items.addAll(arrayVal.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty));
+                        }
+                        final rightCell = items.isNotEmpty
+                            ? pw.Column(children: items.map((it) => pw.Padding(padding: pw.EdgeInsets.only(bottom: 4), child: pw.Text(it, style: baseStyle))).toList())
+                            : pw.Text(single ?? '(tuščia)', style: baseStyle);
+
+                        return pw.TableRow(children: [
+                          pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text(headerText.isNotEmpty ? '$label - $headerText' : label, style: baseStyle)),
+                          pw.Padding(padding: pw.EdgeInsets.all(6), child: rightCell),
+                        ]);
+                      }(),
+                  ],
+                ));
               }
 
-              // Attached files for this row (prefetched)
-              final files = attachedFilesByRow[rowId as int] ?? <Map<String, dynamic>>[];
-              if (files.isNotEmpty) {
+              // Attached image or file list
+              final files = attachedFilesByRow[rowId] ?? <Map<String, dynamic>>[];
+              final bytes = rowImageBytes[rowId];
+              if (bytes != null) {
+                try {
+                  final image = pw.MemoryImage(bytes);
+                  content.add(pw.SizedBox(height: 8));
+                  content.add(pw.Container(
+                    decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey500, width: 0.5)),
+                    padding: pw.EdgeInsets.all(6),
+                    child: pw.Center(child: pw.Image(image, width: 350)),
+                  ));
+                } catch (_) {}
+              } else if (files.isNotEmpty) {
                 content.add(pw.SizedBox(height: 6));
                 content.add(pw.Text('Prisegti failai:', style: baseStyle.copyWith(fontWeight: pw.FontWeight.bold)));
                 for (final f in files) {
-                  final name = (f['failoPav'] ?? f['failopav'] ?? f['failo_pav'] ?? f['fileName'] ?? f['name'])?.toString() ?? 'failas';
-                  content.add(pw.Text('- $name', style: baseStyle));
+                  final name = (f['failoPav'] ?? f['failopav'] ?? f['fileName'] ?? f['name'])?.toString() ?? '';
+                  content.add(pw.Padding(padding: pw.EdgeInsets.only(top: 4), child: pw.Text('- $name', style: baseStyle)));
                 }
               }
-
-              // include pre-fetched image for this row if available
-              try {
-                final bytes = rowId != null ? rowImageBytes[rowId as int] : null;
-                if (bytes != null) {
-                  final image = pw.MemoryImage(bytes);
-                  content.add(pw.SizedBox(height: 8));
-                  content.add(pw.Center(child: pw.Image(image, width: 300)));
-                }
-              } catch (_) {}
             }
 
             return content;
