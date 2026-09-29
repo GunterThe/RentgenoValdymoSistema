@@ -465,7 +465,7 @@ class _FatRowsPageState extends State<FatRowsPage> {
                                   const SizedBox(height: 8),
                                   Builder(
                                     builder: (ctx) {
-                                      final rowIdVal = rowId is int ? rowId as int : int.tryParse(rowId?.toString() ?? '') ?? 0;
+                                      final rowIdVal = rowId;
                                       final files = _failaiByRowId[rowIdVal] ?? const <PrisegtasFailas>[];
                                       return Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,

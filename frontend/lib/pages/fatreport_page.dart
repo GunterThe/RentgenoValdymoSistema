@@ -176,7 +176,6 @@ class _FATReportPageState extends State<FATReportPage> {
                                               alignment: WrapAlignment.end,
                                               children: [
                                                 IconButton(onPressed: () => _manageTemplates(it), icon: const Icon(Icons.view_list), tooltip: 'Valdyti šablonus'),
-                                                IconButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReportValuesPage(fatReportId: it.id, fatReportText: it.text))), icon: const Icon(Icons.description), tooltip: 'Valdyti reikšmes'),
                                                 IconButton(onPressed: () => _createOrEdit(existing: it), icon: const Icon(Icons.edit), tooltip: 'Redaguoti'),
                                                 IconButton(onPressed: () => _delete(it), icon: const Icon(Icons.delete), tooltip: 'Ištrinti'),
                                               ],

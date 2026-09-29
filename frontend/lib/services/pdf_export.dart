@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -39,10 +40,9 @@ class PdfExport {
           try {
             final rv = await Api.fetchReportValueByEverything(frId as int, tplId);
             var valueText = (rv['value'] ?? rv['Value'] ?? '').toString();
-            if (valueText.isEmpty) valueText = '(tuščia)';
-            templateValues[tplId] = valueText;
+            templateValues[tplId] = _formatValueForPdf(valueText);
           } catch (_) {
-            templateValues[tplId] = '(tuščia)';
+            templateValues[tplId] = '';
           }
         }
       }
@@ -114,7 +114,7 @@ class PdfExport {
 
               for (final tpl in templates) {
                 final tplId = (tpl['id'] ?? tpl['Id']) as int?;
-                final valueText = tplId != null ? (templateValues[tplId] ?? '(tuščia)') : '(tuščia)';
+                final valueText = tplId != null ? (templateValues[tplId] ?? '') : '';
                 content.add(pw.Padding(
                     padding: pw.EdgeInsets.only(top: 6, bottom: 6),
                     child: pw.Row(children: [
@@ -203,8 +203,14 @@ class PdfExport {
                           items.addAll(arrayVal.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty));
                         }
                         final rightCell = items.isNotEmpty
-                            ? pw.Column(children: items.map((it) => pw.Padding(padding: pw.EdgeInsets.only(bottom: 4), child: pw.Text(it, style: baseStyle))).toList())
-                            : pw.Text(single ?? '(tuščia)', style: baseStyle);
+                          ? pw.Column(children: items.asMap().entries.map((e) {
+                            final idx = e.key + 1;
+                            final it = e.value;
+                            return pw.Padding(
+                              padding: pw.EdgeInsets.only(bottom: 4),
+                              child: pw.Text('$idx. ${_formatValueForPdf(it)}', style: baseStyle));
+                            }).toList())
+                          : pw.Text(_formatValueForPdf(single), style: baseStyle);
 
                         return pw.TableRow(children: [
                           pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text(headerText.isNotEmpty ? '$label - $headerText' : label, style: baseStyle)),
@@ -256,5 +262,37 @@ class PdfExport {
     if (n == null) return false;
     final lower = n.toLowerCase();
     return lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.bmp') || lower.endsWith('.webp') || lower.endsWith('.avif') || lower.endsWith('.heic') || lower.endsWith('.heif') || lower.endsWith('.tif') || lower.endsWith('.tiff');
+  }
+
+  static String _formatValueForPdf(String? raw) {
+    if (raw == null) return '';
+    final s = raw.trim();
+    if (s.isEmpty) return '';
+
+    try {
+      // If value is a JSON array, join and shorten
+      if (s.startsWith('[')) {
+        final parsed = jsonDecode(s);
+        if (parsed is List) {
+          final joined = parsed.map((e) => e?.toString() ?? '').where((e) => e.isNotEmpty).join(', ');
+          return _shorten(joined);
+        }
+      }
+    } catch (_) {
+      // ignore json errors
+    }
+
+    // If it contains commas (likely array-like), shorten
+    if (s.contains(',') && s.length > 60) {
+      return _shorten(s.replaceAll(RegExp('\n'), ' '));
+    }
+
+    return s.length > 120 ? _shorten(s) : s;
+  }
+
+  static String _shorten(String s, [int limit = 80]) {
+    final one = s.replaceAll(RegExp('\s+'), ' ').trim();
+    if (one.length <= limit) return one;
+    return '${one.substring(0, limit).trim()}...';
   }
 }
